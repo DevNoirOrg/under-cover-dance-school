@@ -1,9 +1,10 @@
 /* eslint-disable @next/next/no-img-element -- a design sima <img>-et használ (object-position miatt) */
 import { Fragment } from "react";
-import { about } from "@/data/site";
+import type { AboutContent } from "@/lib/content-types";
+import { mediaUrl } from "@/lib/format";
 
 /* KIK VAGYUNK — pöttyös háttér, kép balra (lg), szöveg + statok jobbra. */
-export default function About() {
+export default function About({ about }: { about: AboutContent }) {
   return (
     <section id="rolunk" className="dot-paper bg-white relative pt-24 pb-24 px-6 md:px-10 scroll-mt-24">
       <div className="max-w-6xl mx-auto relative z-10">
@@ -19,7 +20,7 @@ export default function About() {
             </div>
             <div className="flex gap-8 pt-4">
               {about.stats.map((s, i) => (
-                <Fragment key={s.label}>
+                <Fragment key={i}>
                   {i > 0 && <div className="w-px h-10 bg-slate-200"></div>}
                   <div>
                     <div className="text-3xl font-extrabold text-ink">{s.value}</div>
@@ -34,8 +35,8 @@ export default function About() {
           <div className="relative lg:order-1">
             <div className="w-full aspect-[4/5] bg-slate-100 rounded-[3rem] outline-1 -outline-offset-1 outline-black/5 shadow-2xl relative z-10 overflow-hidden">
               <img
-                src={about.image.src}
-                alt={about.image.alt}
+                src={mediaUrl(about.imagePath)}
+                alt={about.imageAlt}
                 className="absolute inset-0 w-full h-full object-cover object-[44%_50%]"
                 loading="lazy"
                 decoding="async"

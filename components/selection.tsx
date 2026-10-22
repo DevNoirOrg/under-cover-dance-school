@@ -1,14 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { allClasses, type ClassItem, type Room } from "@/data/schedule";
+import type { ClassItem, Room } from "@/lib/content-types";
 
 /*
   A kiválasztott órák közös állapota: az órarend, az összegző sáv, a
   jelentkezési form chipjei és a mobil lebegő sáv mind ebből olvas.
 */
 
-type SelectedClass = ClassItem & { roomId: Room["id"] };
+export type SelectedClass = ClassItem & { roomId: Room["id"] };
 
 type SelectionValue = {
   selected: SelectedClass[];
@@ -19,7 +19,14 @@ type SelectionValue = {
 
 const SelectionContext = createContext<SelectionValue | null>(null);
 
-export function SelectionProvider({ children }: { children: React.ReactNode }) {
+export function SelectionProvider({ rooms, children }: { rooms: Room[]; children: React.ReactNode }) {
+  const allClasses = useMemo<SelectedClass[]>(
+    () =>
+      rooms.flatMap((room) =>
+        room.columns.flatMap((col) => col.classes.map((c) => ({ ...c, roomId: room.id }))),
+      ),
+    [rooms],
+  );
   const [ids, setIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const setChecked = useCallback((id: string, checked: boolean) => {
@@ -41,7 +48,7 @@ export function SelectionProvider({ children }: { children: React.ReactNode }) {
       setChecked,
       clear,
     }),
-    [ids, setChecked, clear],
+    [allClasses, ids, setChecked, clear],
   );
 
   return <SelectionContext.Provider value={value}>{children}</SelectionContext.Provider>;

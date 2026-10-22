@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { rooms, type Room } from "@/data/schedule";
+import type { Room } from "@/lib/content-types";
 import { SelectionChip, useSelection } from "./selection";
 
 /*
@@ -27,7 +27,7 @@ function SchedulePanel({
 
   return (
     <div
-      id={`schedule-${room.id}`}
+      id={`schedule-${room.slug}`}
       className="schedule-panel relative glass-card rounded-[48px] overflow-hidden"
       hidden={!active}
     >
@@ -37,17 +37,17 @@ function SchedulePanel({
           <div className="grid grid-cols-3 bg-white/20">
             {room.columns.map((col, i) => (
               <div
-                key={col.heading}
+                key={i}
                 className={`${i < 2 ? "border-r border-white/20 " : ""}p-5 md:p-8 text-center font-bold text-[11px] md:text-sm uppercase tracking-widest text-white`}
               >
                 {col.heading}
               </div>
             ))}
           </div>
-          <div className={`grid grid-cols-3 ${room.minHeightClass}`}>
+          <div className="grid grid-cols-3" style={{ minHeight: room.minHeightPx }}>
             {room.columns.map((col, i) => (
               <div
-                key={col.heading}
+                key={i}
                 className={`p-4 md:p-6 ${i < 2 ? "border-r border-white/20 " : ""}border-t border-white/20 flex flex-col gap-4 snap-start`}
               >
                 {col.classes.map((c) => (
@@ -55,7 +55,7 @@ function SchedulePanel({
                     <input
                       type="checkbox"
                       className="class-check sr-only"
-                      id={c.id}
+                      id={`ora-${c.id}`}
                       checked={isSelected(c.id)}
                       onChange={(e) => setChecked(c.id, e.target.checked)}
                     />
@@ -79,9 +79,9 @@ function SchedulePanel({
   );
 }
 
-export default function Schedule() {
+export default function Schedule({ rooms }: { rooms: Room[] }) {
   const { selected } = useSelection();
-  const [activeRoom, setActiveRoom] = useState<Room["id"]>(rooms[0].id);
+  const [activeRoom, setActiveRoom] = useState<Room["id"]>(rooms[0]?.id ?? "");
   const scrollEls = useRef<Record<string, HTMLDivElement | null>>({});
 
   // "Van még oldalra" jelzés: a panel .at-end osztályt kap, ha a végére ért
@@ -93,7 +93,7 @@ export default function Schedule() {
       const atEnd = sc.scrollLeft + sc.clientWidth >= sc.scrollWidth - 2;
       sc.parentElement?.classList.toggle("at-end", atEnd);
     }
-  }, []);
+  }, [rooms]);
 
   useEffect(() => {
     const els = Object.values(scrollEls.current).filter(Boolean) as HTMLDivElement[];
@@ -103,7 +103,7 @@ export default function Schedule() {
       els.forEach((el) => el.removeEventListener("scroll", updateScrollFades));
       window.removeEventListener("resize", updateScrollFades);
     };
-  }, [updateScrollFades]);
+  }, [rooms, updateScrollFades]);
 
   // első mérés, és tabváltás után az új panel méreteivel újra
   useEffect(() => {

@@ -1,8 +1,9 @@
-import { hero } from "@/data/site";
+import type { HeroContent } from "@/lib/content-types";
+import { mediaUrl } from "@/lib/format";
 import LogoMark from "./LogoMark";
 
 /* HERO — bal oldalt logó + szöveg + gombok, jobb oldalt álló (9:16) videó. */
-export default function Hero() {
+export default function Hero({ hero }: { hero: HeroContent }) {
   return (
     <header
       id="home"
@@ -29,34 +30,33 @@ export default function Hero() {
           </div>
 
           <p className="max-w-lg text-white/90 font-semibold text-xl leading-relaxed">
-            {hero.lead.before} <span className="text-white">{hero.lead.highlight}</span>{" "}
-            {hero.lead.after}
+            {hero.leadBefore} <span className="text-white">{hero.leadHighlight}</span> {hero.leadAfter}
           </p>
 
           <div className="flex flex-wrap gap-4 pt-10">
             <a
-              href={hero.primaryCta.href}
+              href="#jelentkezes"
               className="bg-white text-ink px-11 py-5 rounded-full font-extrabold text-sm uppercase tracking-[0.2em] shadow-xl hover:bg-ink hover:text-white transition-all hover:-translate-y-1 active:scale-95"
             >
-              {hero.primaryCta.label}
+              {hero.primaryCtaLabel}
             </a>
             <a
-              href={hero.secondaryCta.href}
+              href="#orarend"
               className="border border-white/40 text-white px-11 py-5 rounded-full font-extrabold text-sm uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
             >
-              {hero.secondaryCta.label}
+              {hero.secondaryCtaLabel}
             </a>
           </div>
         </div>
 
         {/* ---------- JOBB OSZLOP: álló videó ---------- */}
         <div className="justify-self-center lg:justify-self-end">
-          {hero.heroVideoSrc ? (
+          {hero.videoPath ? (
             <div className="relative w-[min(72vw,300px)] sm:w-[min(60vw,330px)] lg:w-[min(32vw,360px)] aspect-[9/16] rounded-[2rem] overflow-hidden bg-ink/40">
               <video
                 className="absolute inset-0 w-full h-full object-cover"
-                src={hero.heroVideoSrc}
-                poster={hero.heroVideoPoster ?? undefined}
+                src={mediaUrl(hero.videoPath)}
+                poster={hero.videoPosterPath ? mediaUrl(hero.videoPosterPath) : undefined}
                 autoPlay
                 muted
                 loop
@@ -66,7 +66,7 @@ export default function Hero() {
           ) : (
             <div className="relative w-[min(72vw,300px)] sm:w-[min(60vw,330px)] lg:w-[min(32vw,360px)] aspect-[9/16] rounded-[2rem] overflow-hidden bg-ink/40 border border-dashed border-white/25 grid place-items-center">
               <span className="text-white/50 text-xs font-bold tracking-[0.3em] uppercase">
-                {hero.videoPlaceholderLabel}
+                Álló videó
               </span>
             </div>
           )}

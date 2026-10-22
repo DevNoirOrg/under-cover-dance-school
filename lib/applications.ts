@@ -1,0 +1,87 @@
+import "server-only";
+import { db } from "./db";
+
+export const STATUSES = [
+  { id: "uj", label: "Új", badge: "bg-uc text-ink" },
+  { id: "felvettuk", label: "Felvettük", badge: "bg-emerald-100 text-emerald-800" },
+  { id: "elutasitva", label: "Elutasítva", badge: "bg-red-100 text-red-700" },
+  { id: "archivalt", label: "Archivált", badge: "bg-slate-200 text-slate-600" },
+] as const;
+export type StatusId = (typeof STATUSES)[number]["id"];
+
+export type Application = {
+  id: string;
+  createdAt: string;
+  status: StatusId;
+  vezeteknev: string;
+  keresztnev: string;
+  email: string;
+  szuletes: string;
+  szuloNev: string | null;
+  szuloEmail: string | null;
+  tapasztalat: string;
+  kezdes: string;
+  megjegyzes: string;
+  classes: string[];
+  adminNote: string;
+  statusUpdatedAt: string | null;
+  statusUpdatedBy: string | null;
+};
+
+type Row = {
+  id: string;
+  created_at: Date;
+  status: StatusId;
+  vezeteknev: string;
+  keresztnev: string;
+  email: string;
+  szuletes: string;
+  szulo_nev: string | null;
+  szulo_email: string | null;
+  tapasztalat: string;
+  kezdes: string;
+  megjegyzes: string;
+  classes: string[];
+  admin_note: string;
+  status_updated_at: Date | null;
+  status_updated_by: string | null;
+};
+
+const map = (r: Row): Application => ({
+  id: r.id,
+  createdAt: r.created_at.toISOString(),
+  status: r.status,
+  vezeteknev: r.vezeteknev,
+  keresztnev: r.keresztnev,
+  email: r.email,
+  szuletes: r.szuletes,
+  szuloNev: r.szulo_nev,
+  szuloEmail: r.szulo_email,
+  tapasztalat: r.tapasztalat,
+  kezdes: r.kezdes,
+  megjegyzes: r.megjegyzes,
+  classes: r.classes,
+  adminNote: r.admin_note,
+  statusUpdatedAt: r.status_updated_at?.toISOString() ?? null,
+  statusUpdatedBy: r.status_updated_by,
+});
+
+export async function listApplications(status: StatusId | "osszes"): Promise<Application[]> {
+  const rows =
+    status === "osszes"
+      ? await db()<Row[]>`select * from undercover.applications order by created_at desc limit 2000`
+      : await db()<Row[]>`select * from undercover.applications where status = ${status} order by created_at desc limit 2000`;
+  return rows.map(map);
+}
+
+export async function getApplication(id: string): Promise<Application | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const rows = await db()<Row[]>`select * from undercover.applications where id = ${id}`;
+  return rows[0] ? map(rows[0]) : null;
+}
+
+export async function countByStatus(): Promise<Record<string, number>> {
+  const rows = await db()<{ status: string; n: number }[]>`
+    select status, count(*)::int as n from undercover.applications group by status`;
+  return Object.fromEntries(rows.map((r) => [r.status, r.n]));
+}

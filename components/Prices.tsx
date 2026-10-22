@@ -1,4 +1,4 @@
-import { priceNotes, prices, type PriceItem } from "@/data/prices";
+import type { PriceItem, PriceNote } from "@/lib/content-types";
 
 /* ÁRAINK — lila kártya a jelentkezés előtt, két oszlopos árlistával. */
 
@@ -16,7 +16,7 @@ function PriceRow({ item }: { item: PriceItem }) {
   );
 }
 
-export default function Prices() {
+export default function Prices({ prices, notes }: { prices: PriceItem[]; notes: PriceNote[] }) {
   const half = Math.ceil(prices.length / 2);
   const left = prices.slice(0, half);
   const right = prices.slice(half);
@@ -33,19 +33,19 @@ export default function Prices() {
         <div className="grid md:grid-cols-2 md:gap-x-14">
           <ul className="divide-y divide-ink/10 border-b border-ink/10 md:border-b-0">
             {left.map((p) => (
-              <PriceRow key={p.name} item={p} />
+              <PriceRow key={p.id} item={p} />
             ))}
           </ul>
           <ul className="divide-y divide-ink/10">
             {right.map((p) => (
-              <PriceRow key={p.name} item={p} />
+              <PriceRow key={p.id} item={p} />
             ))}
           </ul>
         </div>
 
         <div className="mt-6 md:mt-8 grid gap-3 md:grid-cols-3 md:gap-8 rounded-[1.75rem] bg-white/40 px-6 py-5 md:px-8 md:py-6 text-[13px] leading-relaxed text-ink/75">
-          {priceNotes.map((n) => (
-            <p key={n.text}>
+          {notes.map((n, i) => (
+            <p key={i}>
               {n.mark && (
                 <>
                   <strong className="text-ink">{n.mark}</strong>{" "}

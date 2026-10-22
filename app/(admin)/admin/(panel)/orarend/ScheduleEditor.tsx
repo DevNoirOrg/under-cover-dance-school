@@ -1,0 +1,309 @@
+"use client";
+
+import { useState } from "react";
+import { saveSchedule } from "@/app/actions/admin";
+import { Button, Field, IconButton, PageHeader, SaveBar, inputCls, isSame, useSaver } from "@/components/admin/ui";
+import type { EditInfo } from "@/lib/admin-data";
+import type { Room } from "@/lib/content-types";
+
+/*
+  Órarend-szerkesztő: termenként 3 oszlop (a design szerint), az oszlopcímek
+  átírhatók. Az órakártyák húzással (oszlopon belül és oszlopok között) vagy a
+  nyilakkal rendezhetők. Mentéskor az egész órarend egyben kerül az oldalra.
+*/
+
+type EClass = { key: string; id?: string; title: string; subtitle: string; chip: string };
+type Cols = [EClass[], EClass[], EClass[]];
+type ERoom = {
+  key: string;
+  id?: string;
+  name: string;
+  shortName: string;
+  minHeightPx: number;
+  headings: [string, string, string];
+  columns: Cols;
+};
+
+let seq = 0;
+const k = () => `n${++seq}`;
+
+function fromRooms(rooms: Room[]): ERoom[] {
+  return rooms.map((r) => ({
+    key: r.id,
+    id: r.id,
+    name: r.name,
+    shortName: r.shortName,
+    minHeightPx: r.minHeightPx,
+    headings: [r.columns[0]?.heading ?? "", r.columns[1]?.heading ?? "", r.columns[2]?.heading ?? ""],
+    columns: [0, 1, 2].map((i) =>
+      (r.columns[i]?.classes ?? []).map((c) => ({ key: c.id, id: c.id, title: c.title, subtitle: c.subtitle, chip: c.chip })),
+    ) as Cols,
+  }));
+}
+
+function toPayload(rooms: ERoom[]) {
+  return {
+    rooms: rooms.map((r) => ({
+      id: r.id,
+      name: r.name,
+      shortName: r.shortName,
+      minHeightPx: r.minHeightPx,
+      headings: r.headings,
+      columns: r.columns.map((col) => col.map(({ id, title, subtitle, chip }) => ({ id, title, subtitle, chip }))) as [
+        { id?: string; title: string; subtitle: string; chip: string }[],
+        { id?: string; title: string; subtitle: string; chip: string }[],
+        { id?: string; title: string; subtitle: string; chip: string }[],
+      ],
+    })),
+  };
+}
+
+type DragRef = { col: number; index: number } | null;
+
+export default function ScheduleEditor({ initial, info }: { initial: Room[]; info: EditInfo }) {
+  const [saved, setSaved] = useState<ERoom[]>(() => fromRooms(initial));
+  const [rooms, setRooms] = useState<ERoom[]>(() => fromRooms(initial));
+  const [activeKey, setActiveKey] = useState<string>(() => rooms[0]?.key ?? "");
+  const [drag, setDrag] = useState<DragRef>(null);
+  const [dropCol, setDropCol] = useState<number | null>(null);
+  const { pending, status, save } = useSaver();
+
+  const ri = Math.max(0, rooms.findIndex((r) => r.key === activeKey));
+  const room = rooms[ri];
+
+  const updateRoom = (patch: Partial<ERoom> | ((r: ERoom) => ERoom)) =>
+    setRooms((prev) => prev.map((r, i) => (i === ri ? (typeof patch === "function" ? patch(r) : { ...r, ...patch }) : r)));
+
+  const updateCols = (fn: (cols: Cols) => Cols) =>
+    updateRoom((r) => ({ ...r, columns: fn(r.columns.map((c) => [...c]) as Cols) }));
+
+  const moveClass = (from: { col: number; index: number }, to: { col: number; index: number }) =>
+    updateCols((cols) => {
+      const [item] = cols[from.col].splice(from.index, 1);
+      let idx = to.index;
+      if (from.col === to.col && from.index < to.index) idx -= 1;
+      cols[to.col].splice(Math.max(0, Math.min(idx, cols[to.col].length)), 0, item);
+      return cols;
+    });
+
+  const setClass = (col: number, index: number, patch: Partial<EClass>) =>
+    updateCols((cols) => {
+      cols[col][index] = { ...cols[col][index], ...patch };
+      return cols;
+    });
+
+  function addRoom() {
+    const nr: ERoom = {
+      key: k(),
+      name: "Új terem",
+      shortName: "Új",
+      minHeightPx: 220,
+      headings: [...(room?.headings ?? ["Hétfő · Szerda", "Kedd · Csütörtök", "Péntek"])] as [string, string, string],
+      columns: [[], [], []],
+    };
+    setRooms((p) => [...p, nr]);
+    setActiveKey(nr.key);
+  }
+
+  function deleteRoom() {
+    if (!room) return;
+    const n = room.columns.flat().length;
+    if (!window.confirm(`Biztosan törlöd a(z) „${room.name}” termet${n ? ` és a benne lévő ${n} órát` : ""}? (Mentéskor lesz végleges.)`)) return;
+    const next = rooms.filter((_, i) => i !== ri);
+    setRooms(next);
+    setActiveKey(next[0]?.key ?? "");
+  }
+
+  const dirty = !isSame(toPayload(rooms), toPayload(saved));
+
+  return (
+    <div>
+      <PageHeader
+        title="Órarend"
+        description="Termenként három oszlop. Az órákat húzással vagy a nyilakkal rendezheted, oszlopok között is. A „Rövid felirat” jelenik meg a kiválasztott óra chipjén."
+      />
+
+      {/* Terem-fülek */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {rooms.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => setActiveKey(r.key)}
+            className={`rounded-full px-5 py-2.5 text-xs font-extrabold uppercase tracking-widest transition-colors ${
+              r.key === room?.key ? "bg-ink text-white" : "bg-white text-slate-500 hover:text-ink"
+            }`}
+          >
+            {r.name || "Névtelen terem"}
+            <span className="ml-2 rounded-full bg-uc-pale px-1.5 py-0.5 text-[10px] text-uc-deep">{r.columns.flat().length}</span>
+          </button>
+        ))}
+        {rooms.length < 6 && (
+          <Button variant="ghost" onClick={addRoom}>
+            + Új terem
+          </Button>
+        )}
+      </div>
+
+      {room ? (
+        <>
+          <div className="mb-5 grid gap-4 rounded-[1.75rem] bg-white p-5 shadow-[0_10px_30px_-18px_rgba(20,19,22,0.35)] md:grid-cols-[1fr_1fr_auto] md:items-end md:p-6">
+            <Field label="Terem neve" htmlFor="rname" hint="A terem-váltó gombon és a jelentkezésben.">
+              <input id="rname" className={inputCls} value={room.name} onChange={(e) => updateRoom({ name: e.target.value })} />
+            </Field>
+            <Field label="Rövid név" htmlFor="rshort" hint="Új óránál a chip elejére kerül, pl. „Nagy”.">
+              <input id="rshort" className={inputCls} value={room.shortName} onChange={(e) => updateRoom({ shortName: e.target.value })} />
+            </Field>
+            <Button variant="danger" onClick={deleteRoom} disabled={rooms.length <= 1}>
+              Terem törlése
+            </Button>
+          </div>
+
+          <div className="rounded-[2rem] bg-gradient-to-br from-uc via-uc-deep to-[#4a1b56] p-3 md:p-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              {room.columns.map((col, ci) => (
+                <div
+                  key={ci}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDropCol(ci);
+                  }}
+                  onDragLeave={() => setDropCol((c) => (c === ci ? null : c))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (drag) moveClass(drag, { col: ci, index: room.columns[ci].length });
+                    setDrag(null);
+                    setDropCol(null);
+                  }}
+                  className={`flex flex-col gap-3 rounded-[1.5rem] p-3 transition-colors ${
+                    dropCol === ci && drag ? "bg-white/35" : "bg-white/15"
+                  }`}
+                >
+                  <input
+                    aria-label={`${ci + 1}. oszlop címe`}
+                    className="w-full rounded-xl border-2 border-white/30 bg-white/20 px-3 py-2 text-center text-xs font-extrabold uppercase tracking-widest text-white placeholder:text-white/50 focus:border-white focus:outline-none"
+                    value={room.headings[ci]}
+                    onChange={(e) =>
+                      updateRoom((r) => {
+                        const headings = [...r.headings] as [string, string, string];
+                        headings[ci] = e.target.value;
+                        return { ...r, headings };
+                      })
+                    }
+                  />
+
+                  {col.map((c, i) => (
+                    <div
+                      key={c.key}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        setDrag({ col: ci, index: i });
+                      }}
+                      onDragEnd={() => {
+                        setDrag(null);
+                        setDropCol(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (drag) moveClass(drag, { col: ci, index: i });
+                        setDrag(null);
+                        setDropCol(null);
+                      }}
+                      className={`rounded-2xl bg-white/80 p-3 shadow-sm transition-opacity ${
+                        drag?.col === ci && drag.index === i ? "opacity-40" : ""
+                      }`}
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="cursor-grab select-none text-slate-400" title="Húzd az átrendezéshez">
+                          ⋮⋮
+                        </span>
+                        <div className="flex">
+                          <IconButton label="Előző oszlopba" disabled={ci === 0} onClick={() => moveClass({ col: ci, index: i }, { col: ci - 1, index: room.columns[ci - 1].length })}>
+                            ←
+                          </IconButton>
+                          <IconButton label="Feljebb" disabled={i === 0} onClick={() => moveClass({ col: ci, index: i }, { col: ci, index: i - 1 })}>
+                            ↑
+                          </IconButton>
+                          <IconButton label="Lejjebb" disabled={i === col.length - 1} onClick={() => moveClass({ col: ci, index: i }, { col: ci, index: i + 2 })}>
+                            ↓
+                          </IconButton>
+                          <IconButton label="Következő oszlopba" disabled={ci === 2} onClick={() => moveClass({ col: ci, index: i }, { col: ci + 1, index: room.columns[ci + 1].length })}>
+                            →
+                          </IconButton>
+                          <IconButton
+                            label="Óra törlése"
+                            className="hover:!bg-red-50 hover:!text-red-600"
+                            onClick={() =>
+                              updateCols((cols) => {
+                                cols[ci].splice(i, 1);
+                                return cols;
+                              })
+                            }
+                          >
+                            ✕
+                          </IconButton>
+                        </div>
+                      </div>
+                      <input
+                        aria-label="Óra címe"
+                        className="w-full rounded-lg border-2 border-transparent bg-white px-2.5 py-1.5 text-[15px] font-bold text-ink placeholder:text-slate-300 focus:border-uc focus:outline-none"
+                        placeholder="Hétfő · 17:00 Beginner"
+                        value={c.title}
+                        onChange={(e) => setClass(ci, i, { title: e.target.value })}
+                      />
+                      <input
+                        aria-label="Alcím"
+                        className="mt-1.5 w-full rounded-lg border-2 border-transparent bg-white px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-ink/70 placeholder:text-slate-300 focus:border-uc focus:outline-none"
+                        placeholder="NewJeans Style"
+                        value={c.subtitle}
+                        onChange={(e) => setClass(ci, i, { subtitle: e.target.value })}
+                      />
+                      <label className="mt-2 block text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Rövid felirat (chip)
+                        <input
+                          className="mt-1 w-full rounded-lg border-2 border-transparent bg-uc-pale/60 px-2.5 py-1.5 text-xs font-extrabold normal-case tracking-normal text-ink placeholder:text-slate-300 focus:border-uc focus:outline-none"
+                          placeholder={`${room.shortName} · Hétfő 17:00`}
+                          value={c.chip}
+                          onChange={(e) => setClass(ci, i, { chip: e.target.value })}
+                        />
+                      </label>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateCols((cols) => {
+                        cols[ci].push({ key: k(), title: "", subtitle: "", chip: `${room.shortName} · ` });
+                        return cols;
+                      })
+                    }
+                    className="rounded-2xl border-2 border-dashed border-white/40 py-3 text-xs font-extrabold uppercase tracking-widest text-white/80 transition-colors hover:border-white hover:bg-white/10 hover:text-white"
+                  >
+                    + Új óra
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-slate-500">Nincs terem. Adj hozzá egyet!</p>
+      )}
+
+      <SaveBar
+        dirty={dirty}
+        pending={pending}
+        status={status}
+        info={info}
+        onReset={() => {
+          setRooms(saved);
+          setActiveKey(saved[0]?.key ?? "");
+        }}
+        onSave={() => save(() => saveSchedule(toPayload(rooms)), undefined, () => setSaved(rooms))}
+      />
+    </div>
+  );
+}

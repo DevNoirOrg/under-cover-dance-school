@@ -1,0 +1,69 @@
+-- =====================================================================
+--  Under Cover — kezdő tartalom (seed)
+--  Az undercover.sql UTÁN, EGYSZER futtasd le a Supabase SQL Editorban.
+--  Csak üres táblákba ír (újrafuttatva nem írja felül a már szerkesztett
+--  tartalmat).
+--
+--  Az első admin: cseréld ki az alábbi e-mail címet a sajátodra!
+-- =====================================================================
+
+insert into undercover.admins (email) values (lower('zsozsi.fekete@gmail.com'))
+on conflict (email) do nothing;
+
+insert into undercover.settings (key, value) values ('hero', '{"badge": "Budapest", "leadBefore": "Fedezd fel a K-Pop világát Magyarország", "leadHighlight": "legdinamikusabb", "leadAfter": "táncakadémiáján.", "primaryCtaLabel": "Csatlakozz Most", "secondaryCtaLabel": "Órarendünk", "videoPath": null, "videoPosterPath": null}'::jsonb)
+on conflict (key) do nothing;
+
+insert into undercover.settings (key, value) values ('about', '{"titleLine1": "Több mint tánc.", "titleLine2": "Ez egy életérzés.", "paragraph": "Az Under Cover stúdióiban nem csak lépéseket tanulsz. Egy olyan közösség tagja leszel, ahol a precizitás és a szenvedély kéz a kézben jár.", "highlight": "Budapest szívében és Mosonmagyaróváron várunk modern felszereltségű termeinkben.", "stats": [{"value": "12+", "label": "Oktató"}, {"value": "500+", "label": "Tanítvány"}], "imagePath": "/studionk.jpg", "imageAlt": "Under Cover stúdió — fellépés a színpadon"}'::jsonb)
+on conflict (key) do nothing;
+
+insert into undercover.settings (key, value) values ('footer', '{"locations": ["Budapest, Akácfa u. 12.", "Mosonmagyaróvár, Fő út 45."], "socials": [{"label": "IG", "href": null}, {"label": "TK", "href": null}, {"label": "YT", "href": null}], "copyright": "© 2026 Under Cover Dance Academy", "tagline": "Built for the New Generation"}'::jsonb)
+on conflict (key) do nothing;
+
+insert into undercover.settings (key, value) values ('form_options', '{"experience": ["Nem", "Igen, kezdő szinten", "Igen, 1-2 évet", "Igen, versenyszerűen"], "start": ["Ma", "Holnap", "Jövő héten", "Jövő hónapban"]}'::jsonb)
+on conflict (key) do nothing;
+
+insert into undercover.settings (key, value) values ('price_notes', '{"notes": [{"mark": "*", "text": "A havi bérletek az adott naptári hónapra érvényesek."}, {"mark": "**", "text": "A 4 és 8 alkalmas bérlet az aktiválástól számított 30 napon belül használható fel."}, {"mark": "", "text": "Fizethetsz készpénzzel, bankkártyával vagy átutalással."}]}'::jsonb)
+on conflict (key) do nothing;
+
+insert into undercover.settings (key, value) values ('privacy', '{"text": "MINTA — az adatkezelő adatait, a weboldal címét és az adatfeldolgozókat véglegesítés előtt ellenőrizni kell. (Ezt a bekezdést utána törölheted.)\n\n# A tájékoztató célja, hatálya, irányadó jogszabályok\n\nJelen tájékoztató célja, hogy rögzítse az adatkezelő által alkalmazott adatvédelmi és adatkezelési elveket, valamint az adatkezelő adatvédelmi és adatkezelési politikáját, amelyet magára nézve kötelezőnek ismer el. A tájékoztató az [undercover.hu] weboldalon keresztül megvalósuló adatkezelésekre — elsősorban a táncórákra történő jelentkezésre — vonatkozik, és visszavonásig érvényes.\n\nAz adatkezelés során az adatkezelő az alábbi jogszabályok szerint jár el:\n\n- az Európai Parlament és a Tanács (EU) 2016/679 rendelete (általános adatvédelmi rendelet, GDPR);\n- az információs önrendelkezési jogról és az információszabadságról szóló 2011. évi CXII. törvény (Infotv.);\n- a Polgári Törvénykönyvről szóló 2013. évi V. törvény (Ptk.);\n- a gazdasági reklámtevékenység alapvető feltételeiről és egyes korlátairól szóló 2008. évi XLVIII. törvény (Grtv.).\n\n# Az adatkezelő\n\nNév: Xoa98 Kft.\nSzékhely: 1115 Budapest, Tétényi út 10/c.\nAdószám: 12372845-2-43\nE-mail: masterdancetanciskola@gmail.com\nTelefon: +36 (30) 633-6682\nAdatvédelmi felelős: Tran Ba Duy Phuong\nWeboldal: [undercover.hu]\n\n# Fogalmak\n\n- Személyes adat: azonosított vagy azonosítható természetes személyre (érintett) vonatkozó bármely információ.\n- Adatkezelés: a személyes adatokon végzett bármely művelet — gyűjtés, rögzítés, tárolás, felhasználás, továbbítás, törlés stb.\n- Adatkezelő: aki a személyes adatok kezelésének céljait és eszközeit meghatározza.\n- Adatfeldolgozó: aki az adatkezelő nevében személyes adatokat kezel.\n- Hozzájárulás: az érintett akaratának önkéntes, konkrét, tájékoztatáson alapuló és egyértelmű kinyilvánítása.\n- Adatvédelmi incidens: a biztonság olyan sérülése, amely a személyes adatok véletlen vagy jogellenes megsemmisítését, elvesztését, módosítását, jogosulatlan közlését vagy az azokhoz való jogosulatlan hozzáférést eredményezi.\n\n# Az adatkezelés elvei\n\nA személyes adatok kezelése során az adatkezelő gondoskodik arról, hogy az adatok:\n\n- kezelése jogszerű, tisztességes és az érintett számára átlátható legyen;\n- gyűjtése csak meghatározott, egyértelmű és jogszerű célból történjen (célhoz kötöttség);\n- a cél szempontjából megfelelőek, relevánsak és szükségesek legyenek (adattakarékosság);\n- pontosak és szükség esetén naprakészek legyenek;\n- tárolása csak a cél eléréséhez szükséges ideig történjen;\n- megfelelő biztonságát technikai és szervezési intézkedésekkel biztosítsa.\n\nAz adatkezelő felelős ezen elvek betartásáért, és képes annak igazolására (elszámoltathatóság).\n\n# A kezelt adatok köre és az adatkezelés célja\n\nTáncórára jelentkezés\n\nKezelt adatok: vezetéknév, keresztnév, e-mail cím, születési dátum, a választott órák (nap, időpont, helyszín), korábbi tánctapasztalat, a kezdés tervezett ideje, a megjegyzés mezőben önként megadott adatok\n16 év alatti jelentkezőnél: a szülő / törvényes képviselő neve és e-mail címe\nCél: a jelentkezés fogadása, a jelentkezővel (illetve szülőjével) való kapcsolattartás, a csoportba sorolás és az órák szervezése\nJogalap: az érintett önkéntes hozzájárulása — GDPR 6. cikk (1) bek. a) pont\nIdőtartam: az utolsó kapcsolatfelvételtől számított 1 év, vagy a hozzájárulás visszavonásáig\n\n16 év alatti jelentkező esetén a hozzájárulást a szülői felügyeletet gyakorló személy adja meg, ezért az űrlap ilyenkor a szülő adatait is kéri.\n\nKapcsolatfelvétel (e-mail, telefon, közösségi média)\n\nKezelt adatok: név, e-mail cím, telefonszám, az üzenetben megadott adatok\nCél: a megkeresések megválaszolása, kapcsolattartás\nJogalap: az érintett önkéntes hozzájárulása — GDPR 6. cikk (1) bek. a) pont\nIdőtartam: az utolsó kapcsolatfelvételtől számított 1 év, vagy a hozzájárulás visszavonásáig\n\n# Az adatkezelés módja\n\nAz adatokat az érintett maga adja meg a weboldal jelentkezési űrlapján. Az adatkezelő az adatokat elektronikus úton kezeli, azokat csak a fenti célokra használja fel, és nem hoz kizárólag automatizált adatkezelésen alapuló döntést. A jelentkezés a „Hozzájárulok…” jelölőnégyzet bepipálásával és az űrlap elküldésével történik; pipa nélkül a jelentkezés nem küldhető el.\n\n# Technikai adatok és sütik (cookie-k)\n\nA weboldal a működéshez szükséges, a felhasználói élményt javító, valamint statisztikai célú sütiket használhat. A statisztikai sütik (pl. Google Analytics, „_ga”) összesített, személyes azonosításra nem alkalmas adatokat gyűjtenek a látogatottságról. A sütik a böngésző beállításaiban bármikor törölhetők vagy letilthatók; ez a weboldal egyes funkcióinak működését befolyásolhatja.\n\n# Adattovábbítás\n\nAz adatkezelő a személyes adatokat harmadik fél részére csak az érintett előzetes hozzájárulásával vagy jogszabályi kötelezettség alapján (pl. hatósági megkeresésre) továbbítja.\n\n# Adatfeldolgozók\n\nTárhelyszolgáltató: Rackforest Kft. — 1132 Budapest, Victor Hugo u. 18–22.\nWeboldal karbantartás, adatmentés: [a fejlesztő / üzemeltető neve, címe]\nLátogatottság-mérés: Google Ireland Ltd. — Gordon House, Barrow Street, Dublin 4, Írország (Google Analytics)\n\n# Külső szolgáltatók\n\nA weboldal hivatkozásokat tartalmazhat közösségi média felületekre (Instagram, TikTok, YouTube) és beágyazott tartalmakat (pl. videó, térkép) jeleníthet meg. Ezeken a felületeken az adott szolgáltató saját adatkezelési szabályzata az irányadó.\n\n# Adatbiztonság, az adatok megismerése\n\nAz adatkezelő megfelelő technikai és szervezési intézkedésekkel védi az adatokat a jogosulatlan hozzáférés, megváltoztatás, továbbítás, nyilvánosságra hozatal, törlés vagy megsemmisülés ellen. Az adatokhoz csak az adatkezelő erre feljogosított munkatársai, illetve oktatói férhetnek hozzá, kizárólag a fenti célok érdekében.\n\n# Az adatkezelés időtartama, törlés\n\nA személyes adatokat az adatkezelő az 5. pontban megjelölt ideig kezeli. Az adatokat törli, ha kezelésük jogellenes, az adatkezelés célja megszűnt, a tárolási idő lejárt, az érintett visszavonja a hozzájárulását vagy törlést kér, illetve ha ezt bíróság vagy hatóság elrendeli.\n\n# Az érintett jogai\n\n- Tájékoztatás és hozzáférés: tájékoztatást kérhet a róla kezelt adatokról.\n- Helyesbítés: kérheti a pontatlan adatok javítását.\n- Törlés („elfeledtetés”): kérheti adatai törlését.\n- Korlátozás: kérheti az adatkezelés korlátozását.\n- Tiltakozás: tiltakozhat személyes adatainak kezelése ellen.\n- Adathordozhatóság: kérheti adatai tagolt, géppel olvasható formában történő kiadását.\n- A hozzájárulás visszavonása: hozzájárulását bármikor visszavonhatja; ez nem érinti a visszavonás előtti adatkezelés jogszerűségét.\n\nKérelmét postai úton vagy e-mailben (masterdancetanciskola@gmail.com) nyújthatja be. Az adatkezelő a kérelemre legkésőbb egy hónapon belül válaszol; ez a határidő indokolt esetben további két hónappal meghosszabbítható, amiről az érintettet tájékoztatja.\n\n# Jogorvoslati lehetőségek\n\nHa úgy érzi, hogy személyes adatainak kezelése sérti a jogait, kérjük, először forduljon közvetlenül az adatkezelőhöz. Panaszával a felügyeleti hatósághoz is fordulhat:\n\nHatóság: Nemzeti Adatvédelmi és Információszabadság Hatóság (NAIH)\nCím: 1055 Budapest, Falk Miksa utca 9–11.\nTelefon: +36 (1) 391-1400\nE-mail: ugyfelszolgalat@naih.hu\nWeboldal: https://naih.hu\n\nJogainak megsértése esetén bírósághoz is fordulhat; a per — az érintett választása szerint — a lakóhelye vagy tartózkodási helye szerinti törvényszék előtt is megindítható.\n"}'::jsonb)
+on conflict (key) do nothing;
+
+do $$
+declare r uuid;
+begin
+  if exists (select 1 from undercover.rooms) then return; end if;
+  insert into undercover.rooms (slug, name, short_name, column_headings, min_height_px, sort)
+  values ('nagy', 'Nagy terem', 'Nagy', array['Hétfő · Szerda','Kedd · Csütörtök','Péntek'], 280, 0) returning id into r;
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 0, 0, 'Hétfő · 17:00 Beginner', 'NewJeans Style', 'Nagy · Hétfő 17:00');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 0, 1, 'Szerda · 18:30 Advanced', 'Stray Kids Choreo', 'Nagy · Szerda 18:30');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 1, 0, 'Kedd · 17:30 Intermediate', 'IVE — Baddie', 'Nagy · Kedd 17:30');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 1, 1, 'Csütörtök · 19:00 Haladó', 'Blackpink Essentials', 'Nagy · Csütörtök 19:00');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 2, 0, '16:00 Kids Pop', 'Twice Medley', 'Nagy · Péntek 16:00');
+  insert into undercover.rooms (slug, name, short_name, column_headings, min_height_px, sort)
+  values ('kozepes', 'Közepes terem', 'Közepes', array['Hétfő · Szerda','Kedd · Csütörtök','Péntek'], 220, 1) returning id into r;
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 0, 0, 'Szerda · 17:00 Beginner', 'K-pop Basic', 'Közepes · Szerda 17:00');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 1, 0, 'Kedd · 17:00 Beginner', 'Blackpink Essentials', 'Közepes · Kedd 17:00');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 1, 1, 'Csütörtök · 18:00 Advanced', 'BTS Legacy Class', 'Közepes · Csütörtök 18:00');
+  insert into undercover.classes (room_id, col, sort, title, subtitle, chip) values (r, 2, 0, '10:00 Workshop', 'K-Pop Intenzív', 'Közepes · Péntek 10:00');
+end $$;
+
+do $$
+begin
+  if exists (select 1 from undercover.news) then return; end if;
+  insert into undercover.news (published_on, title, excerpt, placeholder_label) values ('2026-05-12', 'Fellépés a Budapest Parkban!', 'Hatalmasat ment a csapat a legutóbbi K-Pop Night eseményen…', 'Fellépés');
+  insert into undercover.news (published_on, title, excerpt, placeholder_label) values ('2026-04-28', 'Új kurzusok indulnak májustól', 'Kezdő és haladó csoportjaink is feltöltődtek, nézd meg az extra időpontokat…', 'Kurzus');
+  insert into undercover.news (published_on, title, excerpt, placeholder_label) values ('2026-03-15', 'Merch Drop: Hamarosan!', 'Készülnek az egyedi Under Cover pulcsik és pólók, limitált kiadásban…', 'Merch');
+end $$;
+
+do $$
+begin
+  if exists (select 1 from undercover.prices) then return; end if;
+  insert into undercover.prices (name, price, note, sort) values ('Órajegy', '4 000 Ft', '', 0);
+  insert into undercover.prices (name, price, note, sort) values ('Havi bérlet — 1 csoport', '20 000 Ft', '*', 1);
+  insert into undercover.prices (name, price, note, sort) values ('Havi bérlet — 2 csoport', '30 000 Ft', '*', 2);
+  insert into undercover.prices (name, price, note, sort) values ('Korlátlan havi bérlet', '36 000 Ft', '*', 3);
+  insert into undercover.prices (name, price, note, sort) values ('1 pénteki csoport', '14 000 Ft', '*', 4);
+  insert into undercover.prices (name, price, note, sort) values ('1 csoport + 1 pénteki', '26 000 Ft', '*', 5);
+  insert into undercover.prices (name, price, note, sort) values ('4 alkalmas bérlet', '14 000 Ft', '**', 6);
+  insert into undercover.prices (name, price, note, sort) values ('8 alkalmas bérlet', '22 000 Ft', '**', 7);
+end $$;

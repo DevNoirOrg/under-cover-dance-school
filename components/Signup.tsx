@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { experienceOptions, PARENT_REQUIRED_UNDER_AGE, startOptions } from "@/data/form";
-import { submitApplication, type ApplicationData } from "@/lib/application";
+import type { FormOptions } from "@/lib/content-types";
+import { PARENT_REQUIRED_UNDER_AGE } from "@/lib/form-rules";
+import { submitApplication } from "@/app/actions/applications";
 import { SelectionChip, useSelection } from "./selection";
 
 /*
@@ -13,7 +14,7 @@ import { SelectionChip, useSelection } from "./selection";
    - magyar nyelvű, mezőnkénti validáció; egy mező csak akkor piros, ha
      a látogató már hozzányúlt, vagy megpróbálta beküldeni
    - az első sikertelen beküldés után a hibák élőben frissülnek
-   - beküldés: lásd lib/application.ts (most demó)
+   - beküldés: app/actions/applications.ts (mentés + e-mail értesítés)
 */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -109,7 +110,7 @@ function FieldError({ message, className = "field-error" }: { message?: string; 
   );
 }
 
-export default function Signup() {
+export default function Signup({ formOptions }: { formOptions: FormOptions }) {
   const { selected, clear } = useSelection();
 
   const [values, setValues] = useState<Values>(emptyValues);
@@ -121,6 +122,11 @@ export default function Signup() {
   /** A beküldéskor hibás mezők — ezek pirosak maradnak, amíg ki nem javítja őket. */
   const [flaggedAtSubmit, setFlaggedAtSubmit] = useState<ReadonlySet<ErrorKey>>(() => new Set());
   const [thanksRows, setThanksRows] = useState<[string, React.ReactNode][] | null>(null);
+  /** A szerver által visszaadott hiba (pl. túl sok jelentkezés). */
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  /** Rejtett csapdamező (spamvédelem) — ember nem látja, nem tölti ki. */
+  const [website, setWebsite] = useState("");
   const thanksRef = useRef<HTMLDivElement>(null);
 
   const age = ageFrom(values.szuletes);
@@ -148,7 +154,8 @@ export default function Signup() {
   const selectionError = submitTried && noSelection;
   const invalidCount = Object.keys(invalidFields).length + (noSelection ? 1 : 0);
   const shownCount = Object.keys(errors).length + (selectionError ? 1 : 0);
-  const summary = submitTried && invalidCount > 0 ? summaryText(shownCount || invalidCount) : null;
+  const summary =
+    submitTried && invalidCount > 0 ? summaryText(shownCount || invalidCount) : serverError;
 
   useEffect(() => {
     if (thanksRows) thanksRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -176,20 +183,36 @@ export default function Signup() {
       return;
     }
 
-    const data: ApplicationData = {
-      vezeteknev: values.vezeteknev,
-      keresztnev: values.keresztnev,
-      email: values.email,
-      szuletes: values.szuletes,
-      ...(minor ? { szulo_nev: values.szulo_nev, szulo_email: values.szulo_email } : {}),
-      tapasztalat: values.tapasztalat,
-      kezdes: values.kezdes,
-      megjegyzes: values.megjegyzes,
-      adatkezeles: "elfogadva",
-      valasztott_orak: selected.map((c) => c.full),
-    };
-    await submitApplication(data);
+    if (pending) return;
+    setPending(true);
+    setServerError(null);
+    let result;
+    try {
+      result = await submitApplication({
+        vezeteknev: values.vezeteknev,
+        keresztnev: values.keresztnev,
+        email: values.email,
+        szuletes: values.szuletes,
+        szulo_nev: minor ? values.szulo_nev : "",
+        szulo_email: minor ? values.szulo_email : "",
+        tapasztalat: values.tapasztalat,
+        kezdes: values.kezdes,
+        megjegyzes: values.megjegyzes,
+        adatkezeles: true,
+        classIds: selected.map((c) => c.id),
+        website,
+      });
+    } catch {
+      result = { ok: false as const, error: "Nem sikerült elküldeni a jelentkezést. Kérjük, próbáld újra pár perc múlva." };
+    } finally {
+      setPending(false);
+    }
+    if (!result.ok) {
+      setServerError(result.error);
+      return;
+    }
 
+    const data = { ...values, valasztott_orak: selected.map((c) => c.full) };
     const rows: [string, React.ReactNode][] = [
       ["Név", data.vezeteknev + " " + data.keresztnev],
       ["E-mail", data.email],
@@ -219,6 +242,7 @@ export default function Signup() {
     setFlaggedAtSubmit(new Set());
     clear();
     setThanksRows(null);
+    setServerError(null);
     document.getElementById("orarend")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -399,7 +423,7 @@ export default function Signup() {
                 onChange={set("tapasztalat")}
               >
                 <option value="">Válassz…</option>
-                {experienceOptions.map((o) => (
+                {formOptions.experience.map((o) => (
                   <option key={o} value={o}>
                     {o}
                   </option>
@@ -422,7 +446,7 @@ export default function Signup() {
                 onChange={set("kezdes")}
               >
                 <option value="">Válassz…</option>
-                {startOptions.map((o) => (
+                {formOptions.start.map((o) => (
                   <option key={o} value={o}>
                     {o}
                   </option>
@@ -487,11 +511,27 @@ export default function Signup() {
             {summary}
           </p>
 
+          {/* Spamvédelmi csapdamező — képernyőn kívül, emberek nem látják. */}
+          <div aria-hidden="true" className="absolute -left-[10000px] top-auto w-px h-px overflow-hidden">
+            <label htmlFor="f-website">Weboldal</label>
+            <input
+              type="text"
+              id="f-website"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-ink text-white py-6 rounded-2xl font-extrabold uppercase tracking-[0.3em] shadow-xl hover:bg-uc-deep transition-all mt-4"
+            disabled={pending}
+            aria-busy={pending}
+            className="w-full bg-ink text-white py-6 rounded-2xl font-extrabold uppercase tracking-[0.3em] shadow-xl hover:bg-uc-deep transition-all mt-4 disabled:opacity-60 disabled:cursor-wait"
           >
-            Jelentkezem
+            {pending ? "Küldés…" : "Jelentkezem"}
           </button>
           <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
             <Req /> kötelező mező

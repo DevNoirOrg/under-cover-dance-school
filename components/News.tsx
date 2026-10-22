@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- a kártyakép a design szerinti egyszerű <img> */
-import { news } from "@/data/news";
+import type { NewsItem } from "@/lib/content-types";
+import { mediaUrl } from "@/lib/format";
 
 /*
   HÍREK — elforgatott fotó-kártyák cellux-csíkkal. A forgatás / eltolás
@@ -11,7 +12,7 @@ const variants = [
   { wrapper: "group cursor-pointer", card: "rotate-1 group-hover:rotate-[-1deg]", tape: "-rotate-1" },
 ];
 
-export default function News() {
+export default function News({ news }: { news: NewsItem[] }) {
   return (
     <section id="hirek" className="dot-paper py-24 px-6 md:px-10 bg-white scroll-mt-24">
       <div className="max-w-6xl mx-auto">
@@ -24,16 +25,16 @@ export default function News() {
           {news.map((item, i) => {
             const v = variants[i % variants.length];
             return (
-              <div key={item.title} className={v.wrapper}>
+              <div key={item.id} className={v.wrapper}>
                 <div
                   className={`relative bg-white p-4 rounded-[1.5rem] shadow-lg ${v.card} transition-transform duration-300`}
                 >
                   <div className={`tape-strip ${v.tape}`}></div>
-                  {item.imageSrc ? (
+                  {item.imagePath ? (
                     <div className="aspect-[3/4] rounded-2xl bg-slate-100 mb-4 overflow-hidden">
                       <img
-                        src={item.imageSrc}
-                        alt={item.imageAlt ?? item.title}
+                        src={mediaUrl(item.imagePath)}
+                        alt={item.imageAlt || item.title}
                         className="w-full h-full object-cover"
                         loading="lazy"
                         decoding="async"
@@ -46,7 +47,7 @@ export default function News() {
                       </span>
                     </div>
                   )}
-                  <span className="font-mono text-[10px] text-uc-deep font-bold">{item.date}</span>
+                  <span className="font-mono text-[10px] text-uc-deep font-bold">{item.dateLabel}</span>
                   <h4 className="font-bold text-lg mt-1 mb-2 leading-tight">{item.title}</h4>
                   <p className="text-xs leading-relaxed text-ink/60">{item.excerpt}</p>
                 </div>
