@@ -1,0 +1,540 @@
+@import "tailwindcss";
+
+/*
+  Design tokenek — 1:1 a 18.html / adatkezeles.html @theme blokkjából.
+  A betűtípusokat a next/font tölti be (app/fonts.ts), ezek CSS-változóit
+  kötjük itt a Tailwind font-családokra.
+*/
+@theme inline {
+  --color-paper: #ffffff;
+  --color-mist: #f5f4f7;
+  --color-ink: #141316;
+  --color-uc: #c979d8;
+  --color-uc-deep: #9147a1;
+  --color-uc-pale: #f4e5f8;
+  --color-uc-hero-dark: #8c2e9d;
+  --font-display: "Unbounded", sans-serif;
+  --font-sans: var(--font-hanken), sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+  --font-title: var(--font-montserrat), sans-serif;
+}
+
+/* ====================================================================
+   Főoldal — a 18.html <style> blokkja változtatás nélkül
+   ==================================================================== */
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+}
+
+/*
+  13.html — a nav "eltűnik felfelé" / "visszasüllyed" animációja.
+  Alapból (lap teteje) rejtve van; a görgetés-vezérlő script a
+  #site-nav elemről veszi le/teszi rá ezt az osztályt, amint
+  elkezdünk lefelé görgetni. A tényleges "sticky top-6" pozíciót nem
+  bántjuk — csak egy transform/opacity réteget teszünk rá, ez adja a
+  sima becsúszást.
+*/
+#site-nav {
+  transition:
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.4s ease;
+  will-change: transform, opacity;
+}
+#site-nav.nav-hidden {
+  transform: translateY(-140%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+  ---- LOGÓ ----
+  16.html: az ÚJ, króm / 3D Under Cover logó (átlátszó háttérrel). A
+  láblécben (elérhetőségek) viszont az eredeti, fehér logó marad.
+  A képet háttérképként tesszük a dobozba (contain, középre), nincs rajta
+  se maszk, se színátmenet, se animáció.
+*/
+.logo-mark-img {
+  background-image: url("/under_cover_logo_chrome.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/*
+  A vetett árnyék CSAK NYUGALMI állapotban van bekapcsolva — görgetés
+  közben a script leveszi a .logo-at-rest osztályt. Egy CSS filter a
+  transzformált elemet minden képkockán újra raszterizáltatja, ami
+  pont az animáció alatt enné a teljesítményt; nyugalomban viszont
+  ingyen van, és mindkét helyen (sötét hero-háttér, világos
+  nav-pill) segít a kontraszton.
+*/
+#logo-mark.logo-at-rest {
+  filter: drop-shadow(0 2px 5px rgba(20, 19, 22, 0.25));
+}
+
+/*
+  ---- Ezüst / folyékony króm felirat (chrome-title) ----
+  A "2D · Dupla fénycsík" változat, a Te átszínezett/átírt CSS-eddel
+  (repeating-linear-gradient minta, pontos periódusú hurok).
+
+  Egy korábbi verzióban ezt két pszeudoelemre (::before statikus
+  árnyék + ::after animált minta) bontottam szét, a Te
+  pszeudoelemes ötleted mentén. Élesben viszont kiderült, hogy ez
+  éppen egy ÚJ hibát okozott: a két külön réteg (attr(data-text)
+  tartalom mindkettőn) néha 1px-nyit másképp "kerningelt" — az
+  egyiken volt filter:drop-shadow, a másikon nem, és emiatt a
+  böngésző a két réteget külön kompozit-rétegként, kicsit eltérő
+  sub-pixel illesztéssel rajzolta ki. Ez pont azt az "elmosódott,
+  szellemképes" hatást adta vissza, amit el akartunk kerülni
+  (legjobban a Jelentkezés címnél látszott).
+
+  Ezért itt most EGYETLEN réteg van — magán a valódi szövegen fut
+  minden (a gradiens, a clip, az árnyék ÉS az animáció is). A
+  korábbi debug-tesztünk kifejezetten ezt igazolta: a
+  background-position animálása + filter:drop-shadow EGYÜTT, egy
+  rétegen, magában NEM okoz akadozást — az eredeti lag oka egy
+  teljesen más, hibás felépítés volt (külön blend-mode-os réteg egy
+  filterezett szülő alatt). Így ez egyszerre sima ÉS pixelpontos,
+  mert nincs mit egymásra illeszteni.
+*/
+/*
+  Két réteg EGYETLEN valódi szövegelemen (nincs pszeudoelem-duplikálás,
+  tehát nincs ghosting-kockázat).
+
+  1. réteg (felül, animált) = PONTOSAN a korábbi (a Te) gradiensed és
+  időzítésed, változtatás nélkül — ugyanaz a 6 másodperc, ugyanaz az
+  1900px-es út, ugyanazok a highlight-színek/pozíciók. Az egyetlen
+  módosítás: a két szélén lévő korábbi TÖMÖR szürke (#858890) "buffer"
+  szakaszokat átlátszóra cseréltem. Ez elkerülhetetlen volt — tömören
+  kitöltve semmi nem tudott volna átlátszani alatta, sosem látszott
+  volna a 2. réteg.
+
+  2. réteg (alul, statikus) = ÚJ, fix lágy fém-gradiens — ez adja az
+  "alap kinézetet", ami mindig látszik, csak a 1. réteg fénycsíkja
+  söpör át rajta időnként.
+*/
+.chrome-title {
+  display: inline-block;
+
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+
+  background-image:
+    linear-gradient(
+      115deg,
+      transparent 0px,
+      transparent 300px,
+      #a3a6ae 500px,
+      #c9ccd2 700px,
+      #f1f2f4 850px,
+      #ffffff 950px,
+      #e1e3e7 1050px,
+      #b7bac2 1200px,
+      #92959e 1400px,
+      transparent 1600px,
+      transparent 1900px
+    ),
+    linear-gradient(
+      115deg,
+      #8a8d95 0%,
+      #c3c6cc 30%,
+      #f2f3f5 48%,
+      #ffffff 52%,
+      #f2f3f5 56%,
+      #c3c6cc 75%,
+      #8a8d95 100%
+    );
+
+  background-size:
+    1900px 1900px,
+    100% 100%;
+  background-position:
+    0 0,
+    0 0;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+
+  will-change: background-position;
+
+  animation: chrome-sweep 6s linear infinite;
+}
+
+@keyframes chrome-sweep {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      1900px 0,
+      0 0;
+  }
+}
+/* ---- Jegyzetfüzet pöttyös háttér (fehér-szürke) — 1.html halftone-jának megfelelője ---- */
+.dot-paper {
+  background-image: radial-gradient(
+    circle,
+    #d7d4dc 1px,
+    transparent 1.05px
+  );
+  background-size: 8px 8px;
+}
+
+/* ---- Üveg-kártya — 5.html glass-card-ja ---- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ---- Cellux csík a hírkártyák tetején ----
+   Két javítás a korábbihoz képest:
+   1) KÖZÉPRE IGAZÍTÁS. Eddig csak `left: 50%` volt, ellensúly
+      nélkül — ezért a csík a kártya közepétől JOBBRA indult.
+      A `margin-left` a szélesség felének mínuszával pontosan
+      középre húzza. (Szándékosan margóval, nem transform-mal:
+      a Tailwind v4 a `rotate-*` osztályokat az önálló `rotate`
+      tulajdonsággal adja ki, így a kettő nem üti egymást.)
+   2) ARÁNYOSABB MÉRET. 104x30 helyett 84x22 — a kb. 360px széles
+      kártyához képest ez visszafogottabb, jobban mutat, és a
+      magasság fele lóg a kártya fölé (top = -height/2). */
+.tape-strip {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  width: 84px;
+  margin-left: -42px;
+  /* Vastagság. A `top` mindig ennek a MÍNUSZ FELE legyen, hogy a
+     szalag fele a kártya fölé, fele a kártyára essen. */
+  height: 30px;
+  /* Fehér kártyán a fehér csík láthatatlan volt — ezért egy
+     halvány, áttetsző szürke tónus adja a "ragasztószalag"
+     hatást, egy ferde fénycsíkkal, ami a szalag csillanását
+     imitálja. */
+  background:
+    linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.5) 0 36%,
+      rgba(255, 255, 255, 0.14) 36% 45%,
+      rgba(255, 255, 255, 0.46) 45% 100%
+    ),
+    rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  box-shadow: 0 2px 7px rgba(20, 19, 22, 0.09);
+  backdrop-filter: blur(1px);
+}
+
+/* ---- Körvonalas felirat (Jelentkezés) ----
+   A -webkit-text-stroke a betű KÖZÉPVONALÁRA rajzol, tehát fele
+   befelé esne és elvékonyítaná a betűt. A paint-order: stroke fill
+   miatt viszont előbb a kontúr, utána a kitöltés rajzolódik, így a
+   befelé eső fél eltűnik a kitöltés alatt — vagyis a LÁTHATÓ
+   vastagság a megadott érték FELE. 4px-es körvonalhoz tehát 8px-et
+   adunk meg. */
+.outlined-title {
+  -webkit-text-stroke: 8px #ffffff;
+  paint-order: stroke fill;
+}
+/* Áraink: a körvonal a kártya (lila) színe, nem fehér */
+.consent-box.has-error {
+  outline: 2px solid #f87171;
+  outline-offset: 2px;
+}
+.outlined-title--uc {
+  -webkit-text-stroke-color: #c979d8;
+}
+
+.schedule-panel[hidden] {
+  display: none;
+}
+
+/* ---- Órarend: vízszintes görgetés mobilon ----
+   A belső doboz min-width-je miatt telefonon oldalra csúsztatható az
+   órarend; md-től a min-width megszűnik, így asztali nézetben nincs
+   túlfolyás és nem is jelenik meg görgetősáv. */
+.schedule-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+}
+.schedule-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.schedule-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.schedule-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+}
+/* Elhalványodó sáv a panel jobb szélén: jelzi, hogy van még oldalra. */
+.scroll-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(145, 71, 161, 0),
+    rgba(109, 48, 124, 0.55)
+  );
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+.schedule-panel.at-end .scroll-fade {
+  opacity: 0;
+}
+
+/* ---- Választható órakártya ----
+   A checkbox képernyőolvasó/klaviatúra számára megmarad (sr-only), a
+   kattintható felület a label. A kijelölt állapotot itt, a stíluslapban
+   írjuk le és nem Tailwind `peer-checked:` osztályokkal, mert a
+   peer-variáns az általános testvér-szelektort használja, és így nem
+   érné el a testvér LEÁNYELEMEIT (pipa, szövegek). */
+.class-card {
+  border: 2px solid transparent;
+}
+.class-card:hover {
+  transform: translateY(-4px);
+}
+.class-option input:checked + .class-card {
+  background: #ffffff;
+  border-color: #9147a1;
+  transform: translateY(-4px);
+  box-shadow: 0 18px 34px -16px rgba(20, 19, 22, 0.55);
+}
+.class-option input:focus-visible + .class-card {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+.class-tick {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid rgba(20, 19, 22, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+.class-tick::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 7px;
+  height: 11px;
+  border-right: 2.5px solid #ffffff;
+  border-bottom: 2.5px solid #ffffff;
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.class-option input:checked + .class-card .class-tick {
+  background: #9147a1;
+  border-color: #9147a1;
+}
+.class-option input:checked + .class-card .class-tick::after {
+  opacity: 1;
+}
+
+/* ---- Kiválasztás-chipek ---- */
+.sel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.9);
+  color: #141316;
+}
+.sel-chip.on-light {
+  background: #ffffff;
+  border: 1px solid rgba(145, 71, 161, 0.25);
+}
+/* Az "x" nem betűkarakter, hanem két elforgatott vonal: a glyphek
+   saját fel-/alálógása miatt a &times; sosem ül pontosan a kör
+   közepén (mérve ~0,4px balra és ~0,5px lefelé csúszott). Így
+   viszont a két vonal a doboz mértani közepén metszi egymást. */
+.chip-x {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: rgba(20, 19, 22, 0.1);
+  color: #141316;
+  font-size: 0;
+  line-height: 0;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.chip-x::before,
+.chip-x::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8.5px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.chip-x::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.chip-x::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.chip-x:hover {
+  background: #9147a1;
+  color: #ffffff;
+}
+
+/* ---- Mobil "lebegő" kiválasztás-sáv ----
+   Csak telefonon, csak ha van kiválasztott óra, és csak amíg a
+   jelentkezési szekció nincs a képernyőn. */
+#mobile-dock {
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease;
+  transform: translateY(140%);
+  opacity: 0;
+  pointer-events: none;
+}
+#mobile-dock.dock-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---- Form: legördülő mezők ----
+   Az `appearance: none` leszedi a rendszer nyilát, ezért saját
+   chevront teszünk a jobb szélre háttérképként. */
+.form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%239147a1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.5rem center;
+  padding-right: 3.25rem;
+}
+/* Amíg nincs választva, halvány "placeholder" szín. */
+.form-select.is-empty {
+  color: #cbd5e1;
+}
+
+/* ---- Terem-váltó: hány óra van kiválasztva ---- */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 0.5rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #141316;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: middle;
+}
+.tab-btn.bg-white .tab-badge {
+  background: #9147a1;
+  color: #ffffff;
+}
+
+/* ---- Form: hibaüzenetek ---- */
+.field-error {
+  margin-left: 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+.form-input.has-error {
+  border-color: #fca5a5 !important;
+  background: #fef2f2;
+}
+#form-selection.has-error {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+/* ---- Köszönő pipa ---- */
+.thanks-tick {
+  position: relative;
+  width: 34px;
+  height: 34px;
+}
+.thanks-tick::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 3px;
+  width: 15px;
+  height: 24px;
+  border-right: 4px solid #9147a1;
+  border-bottom: 4px solid #9147a1;
+  transform: rotate(45deg);
+}
+
+/* ====================================================================
+   Adatkezelési tájékoztató — az adatkezeles.html stílusai
+   ==================================================================== */
+.doc h2 {
+  @apply font-title font-black text-2xl md:text-3xl text-ink mt-14 mb-5 scroll-mt-28;
+}
+.doc h3 {
+  @apply font-title font-extrabold text-lg text-ink mt-8 mb-3;
+}
+.doc p {
+  @apply text-[15px] leading-relaxed text-slate-600 mb-4;
+}
+.doc ul {
+  @apply list-disc pl-6 space-y-2 text-[15px] leading-relaxed text-slate-600 mb-4 marker:text-uc;
+}
+.doc strong {
+  @apply text-ink font-bold;
+}
+.doc a {
+  @apply text-uc-deep font-semibold underline underline-offset-2 hover:text-ink;
+}
+.doc .data-table {
+  @apply w-full text-left text-[14px] mb-6 rounded-2xl overflow-hidden;
+}
+.doc .data-table th {
+  @apply bg-uc-pale text-uc-deep text-[11px] font-extrabold uppercase tracking-widest px-4 py-3 align-top w-1/3;
+}
+.doc .data-table td {
+  @apply bg-mist text-slate-700 px-4 py-3 align-top;
+}
+.doc .data-table tr + tr th,
+.doc .data-table tr + tr td {
+  @apply border-t-2 border-white;
+}
+.check {
+  @apply bg-yellow-100 rounded px-1;
+}
