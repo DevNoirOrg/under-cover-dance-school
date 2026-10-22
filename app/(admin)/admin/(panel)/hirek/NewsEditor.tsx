@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { deleteNews, saveNews } from "@/app/actions/admin";
 import MediaField from "@/components/admin/MediaField";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { Button, Card, EditInfoLine, Field, PageHeader, StatusText, inputCls, isSame, textareaCls, useSaver } from "@/components/admin/ui";
 import type { EditInfo } from "@/lib/admin-data";
 import type { NewsItem } from "@/lib/content-types";
@@ -11,14 +12,17 @@ import { mediaUrl, newsDateLabel } from "@/lib/format";
 
 /*
   Hírek: az oldalon dátum szerint csökkenő sorrendben jelennek meg (a legújabb
-  balra). Minden hír külön menthető.
+  balra). Minden hírnek saját oldala van (/hirek/<webcím>) a teljes szöveggel,
+  amit a Word-szerű szerkesztővel lehet megírni. Minden hír külön menthető.
 */
 
 type Draft = {
   id?: string;
   publishedOn: string;
+  slug: string;
   title: string;
   excerpt: string;
+  bodyHtml: string;
   imagePath: string | null;
   imageAlt: string;
   placeholderLabel: string;
@@ -27,8 +31,10 @@ type Draft = {
 const toDraft = (n: NewsItem): Draft => ({
   id: n.id,
   publishedOn: n.publishedOn,
+  slug: n.slug,
   title: n.title,
   excerpt: n.excerpt,
+  bodyHtml: n.bodyHtml,
   imagePath: n.imagePath,
   imageAlt: n.imageAlt ?? "",
   placeholderLabel: n.placeholderLabel,
@@ -54,8 +60,33 @@ function NewsForm({ initial, onDone, isNew }: { initial: Draft; onDone: () => vo
             <input id={`t-${d.id ?? "new"}`} className={inputCls} value={d.title} onChange={(e) => set("title", e.target.value)} />
           </Field>
         </div>
-        <Field label="Rövid szöveg" htmlFor={`e-${d.id ?? "new"}`}>
+        <Field label="Rövid szöveg" htmlFor={`e-${d.id ?? "new"}`} hint="A hírkártyán és a hír oldalán a cím alatt látszik.">
           <textarea id={`e-${d.id ?? "new"}`} rows={3} className={textareaCls} value={d.excerpt} onChange={(e) => set("excerpt", e.target.value)} />
+        </Field>
+        <Field
+          label="Webcím"
+          htmlFor={`s-${d.id ?? "new"}`}
+          hint={
+            <>
+              A hír oldala: <span className="font-mono">/hirek/{d.slug || "…"}</span>. Üresen hagyva a címből készül. Csak kisbetű, szám, kötőjel.
+              {!isNew && saved.slug && (
+                <>
+                  {" "}
+                  <a href={`/hirek/${saved.slug}`} target="_blank" rel="noopener" className="font-bold text-uc-deep underline">
+                    Megnyitom ↗
+                  </a>
+                </>
+              )}
+            </>
+          }
+        >
+          <input
+            id={`s-${d.id ?? "new"}`}
+            className={`${inputCls} font-mono`}
+            value={d.slug}
+            placeholder="pl. ket-uj-k-pop-csoport"
+            onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+          />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Kép leírása" htmlFor={`a-${d.id ?? "new"}`} hint="Képernyőolvasóknak.">
@@ -65,6 +96,20 @@ function NewsForm({ initial, onDone, isNew }: { initial: Draft; onDone: () => vo
             <input id={`p-${d.id ?? "new"}`} className={inputCls} value={d.placeholderLabel} onChange={(e) => set("placeholderLabel", e.target.value)} />
           </Field>
         </div>
+      </div>
+      <Field label="Kártya kép (3:4)" hint="A hírkártyán és a hír oldalának tetején.">
+        <MediaField kind="image" value={d.imagePath} onChange={(p) => set("imagePath", p)} aspectClass="aspect-[3/4] max-w-[240px]" emptyLabel={d.placeholderLabel || "Nincs kép"} />
+      </Field>
+      <div className="md:col-span-2">
+        <Field
+          label="A hír teljes szövege"
+          htmlFor={`b-${d.id ?? "new"}`}
+          hint="Úgy szerkeszd, mint egy Word dokumentumot. Wordből vagy weboldalról is bemásolhatod a szöveget."
+        >
+          <RichTextEditor id={`b-${d.id ?? "new"}`} value={d.bodyHtml} onChange={(html) => set("bodyHtml", html)} />
+        </Field>
+      </div>
+      <div className="md:col-span-2">
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button
             variant="primary"
@@ -74,7 +119,7 @@ function NewsForm({ initial, onDone, isNew }: { initial: Draft; onDone: () => vo
                 () => saveNews(d),
                 isNew ? "Hír közzétéve." : undefined,
                 (r) => {
-                  const next = r.ok && r.id ? { ...d, id: r.id } : d;
+                  const next = r.ok ? { ...d, id: r.id ?? d.id, slug: r.slug ?? d.slug } : d;
                   setD(next);
                   setSaved(next);
                   if (isNew) onDone();
@@ -103,9 +148,6 @@ function NewsForm({ initial, onDone, isNew }: { initial: Draft; onDone: () => vo
           <StatusText status={status} />
         </div>
       </div>
-      <Field label="Kép (3:4)">
-        <MediaField kind="image" value={d.imagePath} onChange={(p) => set("imagePath", p)} aspectClass="aspect-[3/4] max-w-[240px]" emptyLabel={d.placeholderLabel || "Nincs kép"} />
-      </Field>
     </div>
   );
 }
@@ -116,7 +158,7 @@ export default function NewsEditor({ news, info }: { news: NewsItem[]; info: Edi
 
   return (
     <div className="pb-12">
-      <PageHeader title="Hírek" description="A főoldalon a 3 legfrissebb dátumú hír látszik (a legújabb balra). Mentéskor azonnal frissül.">
+      <PageHeader title="Hírek" description="A főoldalon a 3 legfrissebb dátumú hír látszik (a legújabb balra), mindegyik a saját oldalára visz; az összes hír a /hirek oldalon van. Mentéskor azonnal frissül.">
         {!creating && (
           <Button variant="primary" onClick={() => setCreating(true)}>
             + Új hír
@@ -132,7 +174,7 @@ export default function NewsEditor({ news, info }: { news: NewsItem[]; info: Edi
           <Card title="Új hír">
             <NewsForm
               isNew
-              initial={{ publishedOn: today(), title: "", excerpt: "", imagePath: null, imageAlt: "", placeholderLabel: "" }}
+              initial={{ publishedOn: today(), slug: "", title: "", excerpt: "", bodyHtml: "", imagePath: null, imageAlt: "", placeholderLabel: "" }}
               onDone={() => setCreating(false)}
             />
           </Card>

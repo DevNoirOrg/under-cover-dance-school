@@ -44,7 +44,7 @@ export async function readRooms(): Promise<Room[]> {
           title: c.title,
           subtitle: c.subtitle,
           chip: c.chip,
-          full: classFullLabel(r.name, c.title, c.subtitle),
+          full: classFullLabel(r.name, heading, c.title, c.subtitle),
         })),
     })),
   }));
@@ -54,17 +54,20 @@ export async function readNews(): Promise<NewsItem[]> {
   const rows = await db()<
     {
       id: string;
+      slug: string;
       published_on: string;
       title: string;
       excerpt: string;
       image_path: string | null;
       image_alt: string | null;
       placeholder_label: string;
+      body_html: string;
     }[]
-  >`select id, published_on, title, excerpt, image_path, image_alt, placeholder_label
+  >`select id, slug, published_on, title, excerpt, image_path, image_alt, placeholder_label, body_html
     from undercover.news order by published_on desc, created_at desc`;
   return rows.map((r) => ({
     id: r.id,
+    slug: r.slug,
     publishedOn: r.published_on,
     dateLabel: newsDateLabel(r.published_on),
     title: r.title,
@@ -72,6 +75,7 @@ export async function readNews(): Promise<NewsItem[]> {
     imagePath: r.image_path,
     imageAlt: r.image_alt,
     placeholderLabel: r.placeholder_label,
+    bodyHtml: r.body_html,
   }));
 }
 
@@ -94,4 +98,17 @@ export async function getSiteContent(): Promise<SiteContent> {
   cacheTag(CONTENT_TAG);
   const [settings, rooms, news, prices] = await Promise.all([readSettings(), readRooms(), readNews(), readPrices()]);
   return { settings, rooms, news, prices };
+}
+
+/**
+ * Egy hír a saját oldalához — hírenként külön gyorsítótár-bejegyzés. (Így egy
+ * frissen létrehozott hír oldala már az első megnyitáskor is friss adatból
+ * készül, nem a build közben eltett teljes listából.)
+ */
+export async function getNewsPage(slug: string): Promise<{ item: NewsItem | null; copyright: string }> {
+  "use cache";
+  cacheLife("max");
+  cacheTag(CONTENT_TAG);
+  const [news, settings] = await Promise.all([readNews(), readSettings()]);
+  return { item: news.find((n) => n.slug === slug) ?? null, copyright: settings.footer.copyright };
 }

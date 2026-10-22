@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { saveHero } from "@/app/actions/admin";
 import MediaField from "@/components/admin/MediaField";
-import { Card, Field, PageHeader, SaveBar, inputCls, isSame, useSaver } from "@/components/admin/ui";
+import { Card, Field, PageHeader, SaveBar, inputCls, isSame, textareaCls, useSaver } from "@/components/admin/ui";
+import { HeroLead } from "@/components/Hero";
 import type { EditInfo } from "@/lib/admin-data";
 import type { HeroContent } from "@/lib/content-types";
 
@@ -15,7 +16,7 @@ export default function HeroEditor({ initial, info }: { initial: HeroContent; in
 
   return (
     <div>
-      <PageHeader title="Hero" description="Az oldal tetején lévő rész: jelvény, bemutatkozó mondat, gombok és az álló videó." />
+      <PageHeader title="Hero" description="Az oldal tetején lévő rész: jelvény, bemutatkozó szöveg és az álló videó." />
       <div className="space-y-6">
         <Card title="Szövegek">
           <div className="grid gap-5 md:grid-cols-2">
@@ -23,26 +24,13 @@ export default function HeroEditor({ initial, info }: { initial: HeroContent; in
               <input id="badge" className={inputCls} value={v.badge} onChange={(e) => set("badge", e.target.value)} />
             </Field>
             <div />
-            <Field label="Mondat eleje" htmlFor="lb">
-              <input id="lb" className={inputCls} value={v.leadBefore} onChange={(e) => set("leadBefore", e.target.value)} />
-            </Field>
-            <Field label="Kiemelt szó (fehérebb)" htmlFor="lh">
-              <input id="lh" className={inputCls} value={v.leadHighlight} onChange={(e) => set("leadHighlight", e.target.value)} />
-            </Field>
-            <Field label="Mondat vége" htmlFor="la">
-              <input id="la" className={inputCls} value={v.leadAfter} onChange={(e) => set("leadAfter", e.target.value)} />
-            </Field>
-            <div />
-            <Field label="Fő gomb felirata" htmlFor="p1" hint="A jelentkezéshez görget.">
-              <input id="p1" className={inputCls} value={v.primaryCtaLabel} onChange={(e) => set("primaryCtaLabel", e.target.value)} />
-            </Field>
-            <Field label="Második gomb felirata" htmlFor="p2" hint="Az órarendhez görget.">
-              <input id="p2" className={inputCls} value={v.secondaryCtaLabel} onChange={(e) => set("secondaryCtaLabel", e.target.value)} />
+            <Field label="Bemutatkozó szöveg" htmlFor="lb" className="md:col-span-2">
+              <textarea id="lb" rows={3} className={textareaCls} value={v.leadBefore} onChange={(e) => set("leadBefore", e.target.value)} />
             </Field>
           </div>
           <div className="mt-6 rounded-2xl bg-uc-hero-dark p-6">
             <p className="max-w-lg text-xl font-semibold leading-relaxed text-white/90">
-              {v.leadBefore} <span className="text-white">{v.leadHighlight}</span> {v.leadAfter}
+              <HeroLead hero={v} />
             </p>
           </div>
         </Card>
@@ -64,7 +52,14 @@ export default function HeroEditor({ initial, info }: { initial: HeroContent; in
         status={status}
         info={info}
         onReset={() => setV(saved)}
-        onSave={() => save(() => saveHero(v), undefined, () => setSaved(v))}
+        onSave={() => {
+          // a kiemelt rész megszűnt: a régi (adatbázisban maradt) értékeket is ürítjük
+          const next = { ...v, leadHighlight: "", leadAfter: "" };
+          save(() => saveHero(next), undefined, () => {
+            setV(next);
+            setSaved(next);
+          });
+        }}
       />
     </div>
   );

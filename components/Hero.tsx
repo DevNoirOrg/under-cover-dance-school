@@ -2,6 +2,25 @@ import type { HeroContent } from "@/lib/content-types";
 import { mediaUrl } from "@/lib/format";
 import LogoMark from "./LogoMark";
 
+/** A bevezető szöveg; a kiemelt rész (ha van) fehérrel. Az üres részek kimaradnak. */
+export function HeroLead({ hero }: { hero: Pick<HeroContent, "leadBefore" | "leadHighlight" | "leadAfter"> }) {
+  const before = hero.leadBefore.trim();
+  const highlight = hero.leadHighlight.trim();
+  const after = hero.leadAfter.trim();
+  return (
+    <>
+      {before}
+      {highlight && (
+        <>
+          {before && " "}
+          <span className="text-white">{highlight}</span>
+        </>
+      )}
+      {after && (before || highlight ? " " : "") + after}
+    </>
+  );
+}
+
 /* HERO — bal oldalt logó + szöveg + gombok, jobb oldalt álló (9:16) videó. */
 export default function Hero({ hero }: { hero: HeroContent }) {
   return (
@@ -30,7 +49,7 @@ export default function Hero({ hero }: { hero: HeroContent }) {
           </div>
 
           <p className="max-w-lg text-white/90 font-semibold text-xl leading-relaxed">
-            {hero.leadBefore} <span className="text-white">{hero.leadHighlight}</span> {hero.leadAfter}
+            <HeroLead hero={hero} />
           </p>
 
           <div className="flex flex-wrap gap-4 pt-10">
@@ -65,9 +84,7 @@ export default function Hero({ hero }: { hero: HeroContent }) {
             </div>
           ) : (
             <div className="relative w-[min(72vw,300px)] sm:w-[min(60vw,330px)] lg:w-[min(32vw,360px)] aspect-[9/16] rounded-[2rem] overflow-hidden bg-ink/40 border border-dashed border-white/25 grid place-items-center">
-              <span className="text-white/50 text-xs font-bold tracking-[0.3em] uppercase">
-                Álló videó
-              </span>
+              <span className="text-white/50 text-xs font-bold tracking-[0.3em] uppercase">Álló videó</span>
             </div>
           )}
         </div>

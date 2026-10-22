@@ -13,16 +13,21 @@ export type Application = {
   id: string;
   createdAt: string;
   status: StatusId;
-  vezeteknev: string;
-  keresztnev: string;
+  nev: string;
   email: string;
+  telefon: string;
   szuletes: string;
   szuloNev: string | null;
   szuloEmail: string | null;
-  tapasztalat: string;
-  kezdes: string;
+  /** null = nem válaszolt */
+  tapasztalat: string | null;
+  /** Csak a 2026. októberi változás előtti jelentkezéseknél van kitöltve. */
+  kezdes: string | null;
   megjegyzes: string;
   classes: string[];
+  consentAt: string;
+  /** A tájékoztató elfogadásának ideje (a régebbi jelentkezéseknél null). */
+  privacyAckAt: string | null;
   adminNote: string;
   statusUpdatedAt: string | null;
   statusUpdatedBy: string | null;
@@ -32,16 +37,18 @@ type Row = {
   id: string;
   created_at: Date;
   status: StatusId;
-  vezeteknev: string;
-  keresztnev: string;
+  nev: string;
   email: string;
+  telefon: string;
   szuletes: string;
   szulo_nev: string | null;
   szulo_email: string | null;
-  tapasztalat: string;
-  kezdes: string;
+  tapasztalat: string | null;
+  kezdes: string | null;
   megjegyzes: string;
   classes: string[];
+  consent_at: Date;
+  privacy_ack_at: Date | null;
   admin_note: string;
   status_updated_at: Date | null;
   status_updated_by: string | null;
@@ -51,9 +58,9 @@ const map = (r: Row): Application => ({
   id: r.id,
   createdAt: r.created_at.toISOString(),
   status: r.status,
-  vezeteknev: r.vezeteknev,
-  keresztnev: r.keresztnev,
+  nev: r.nev,
   email: r.email,
+  telefon: r.telefon,
   szuletes: r.szuletes,
   szuloNev: r.szulo_nev,
   szuloEmail: r.szulo_email,
@@ -61,6 +68,8 @@ const map = (r: Row): Application => ({
   kezdes: r.kezdes,
   megjegyzes: r.megjegyzes,
   classes: r.classes,
+  consentAt: r.consent_at.toISOString(),
+  privacyAckAt: r.privacy_ack_at?.toISOString() ?? null,
   adminNote: r.admin_note,
   statusUpdatedAt: r.status_updated_at?.toISOString() ?? null,
   statusUpdatedBy: r.status_updated_by,

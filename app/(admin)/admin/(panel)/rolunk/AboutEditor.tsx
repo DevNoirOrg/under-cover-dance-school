@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { saveAbout } from "@/app/actions/admin";
 import MediaField from "@/components/admin/MediaField";
-import { Button, Card, Field, IconButton, PageHeader, SaveBar, inputCls, isSame, textareaCls, useSaver } from "@/components/admin/ui";
+import { Card, Field, PageHeader, SaveBar, inputCls, isSame, textareaCls, useSaver } from "@/components/admin/ui";
 import type { EditInfo } from "@/lib/admin-data";
 import type { AboutContent } from "@/lib/content-types";
 
@@ -15,7 +15,7 @@ export default function AboutEditor({ initial, info }: { initial: AboutContent; 
 
   return (
     <div>
-      <PageHeader title="Rólunk" description="A „Több mint tánc.” szekció szövegei, számai és képe." />
+      <PageHeader title="Rólunk" description="A „Több mint tánc.” szekció szövegei és képe." />
       <div className="space-y-6">
         <Card title="Szövegek">
           <div className="grid gap-5 md:grid-cols-2">
@@ -25,43 +25,12 @@ export default function AboutEditor({ initial, info }: { initial: AboutContent; 
             <Field label="Cím — 2. sor (lila)" htmlFor="t2">
               <input id="t2" className={inputCls} value={v.titleLine2} onChange={(e) => set("titleLine2", e.target.value)} />
             </Field>
-            <Field label="Bekezdés" htmlFor="pa" className="md:col-span-2">
-              <textarea id="pa" rows={3} className={textareaCls} value={v.paragraph} onChange={(e) => set("paragraph", e.target.value)} />
+            <Field label="Bekezdések" htmlFor="pa" className="md:col-span-2" hint="Új bekezdés: hagyj egy üres sort a bekezdések között.">
+              <textarea id="pa" rows={12} className={textareaCls} value={v.paragraph} onChange={(e) => set("paragraph", e.target.value)} />
             </Field>
-            <Field label="Kiemelt bekezdés (sötétebb)" htmlFor="hi" className="md:col-span-2">
+            <Field label="Kiemelt bekezdés (sötétebb) — a végén" htmlFor="hi" className="md:col-span-2">
               <textarea id="hi" rows={2} className={textareaCls} value={v.highlight} onChange={(e) => set("highlight", e.target.value)} />
             </Field>
-          </div>
-        </Card>
-
-        <Card title="Számok" description="Pl. „12+ Oktató”. Legfeljebb 4.">
-          <div className="space-y-2">
-            {v.stats.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  aria-label="Szám"
-                  className={`${inputCls} max-w-[120px]`}
-                  value={s.value}
-                  placeholder="12+"
-                  onChange={(e) => set("stats", v.stats.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
-                />
-                <input
-                  aria-label="Felirat"
-                  className={inputCls}
-                  value={s.label}
-                  placeholder="Oktató"
-                  onChange={(e) => set("stats", v.stats.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-                />
-                <IconButton label="Törlés" onClick={() => set("stats", v.stats.filter((_, j) => j !== i))}>
-                  ✕
-                </IconButton>
-              </div>
-            ))}
-            {v.stats.length < 4 && (
-              <Button variant="ghost" onClick={() => set("stats", [...v.stats, { value: "", label: "" }])}>
-                + Új szám
-              </Button>
-            )}
           </div>
         </Card>
 

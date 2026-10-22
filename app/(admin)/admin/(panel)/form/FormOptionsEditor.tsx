@@ -13,13 +13,10 @@ export default function FormOptionsEditor({ initial, info }: { initial: FormOpti
 
   return (
     <div>
-      <PageHeader title="Form opciók" description="A jelentkezési form két legördülő mezőjének választási lehetőségei." />
+      <PageHeader title="Form opciók" description="A jelentkezési form legördülő mezőjének választási lehetőségei." />
       <div className="grid gap-6 md:grid-cols-2">
-        <Card title="Táncoltál már korábban?">
+        <Card title="Táncoltál már korábban?" description="A mező nem kötelező; a jelentkező üresen is hagyhatja.">
           <StringListEditor items={v.experience} onChange={(experience) => setV((p) => ({ ...p, experience }))} addLabel="+ Új opció" />
-        </Card>
-        <Card title="Mikortól kezdenél?">
-          <StringListEditor items={v.start} onChange={(start) => setV((p) => ({ ...p, start }))} addLabel="+ Új opció" />
         </Card>
       </div>
       <SaveBar

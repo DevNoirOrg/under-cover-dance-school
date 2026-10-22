@@ -7,7 +7,6 @@ import { z } from "zod";
 import { readRooms, readSettings } from "@/lib/content";
 import { db } from "@/lib/db";
 import { renderEmail, sendEmail } from "@/lib/email";
-import { classFullLabel } from "@/lib/format";
 import { PARENT_REQUIRED_UNDER_AGE } from "@/lib/form-rules";
 import { adminBaseUrl } from "@/lib/urls";
 
@@ -20,17 +19,26 @@ import { adminBaseUrl } from "@/lib/urls";
 
 const RATE_LIMIT_PER_HOUR = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_RE = /^\+?[\d\s\-()/]+$/;
 
 const inputSchema = z.object({
-  vezeteknev: z.string().trim().min(1).max(100),
-  keresztnev: z.string().trim().min(1).max(100),
+  nev: z.string().trim().min(1).max(200),
   email: z.string().trim().max(200).regex(EMAIL_RE),
+  telefon: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(PHONE_RE)
+    .refine((v) => v.replace(/\D/g, "").length >= 7),
   szuletes: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   szulo_nev: z.string().trim().max(200).optional().default(""),
   szulo_email: z.string().trim().max(200).optional().default(""),
-  tapasztalat: z.string().trim().min(1).max(100),
-  kezdes: z.string().trim().min(1).max(100),
+  /** Nem kötelező („” = nem válaszolt). */
+  tapasztalat: z.string().trim().max(100).optional().default(""),
   megjegyzes: z.string().trim().max(2000).optional().default(""),
+  /** „Elolvastam és elfogadom az Adatkezelési tájékoztatóban foglaltakat.” */
+  tajekoztato: z.literal(true),
+  /** „Hozzájárulok a fenti adataim Adatkezelő által történő kezeléséhez.” */
   adatkezeles: z.literal(true),
   classIds: z.array(z.string().uuid()).min(1).max(30),
   /** Rejtett csapdamező — ember nem tölti ki. */
@@ -78,7 +86,7 @@ export async function submitApplication(raw: ApplicationInput): Promise<Applicat
   }
 
   const [settings, rooms] = await Promise.all([readSettings(), readRooms()]);
-  if (!settings.form_options.experience.includes(input.tapasztalat) || !settings.form_options.start.includes(input.kezdes)) {
+  if (input.tapasztalat && !settings.form_options.experience.includes(input.tapasztalat)) {
     return { ok: false, error: "Valamelyik választott lehetőség már nem érvényes. Töltsd újra az oldalt." };
   }
 
@@ -87,7 +95,7 @@ export async function submitApplication(raw: ApplicationInput): Promise<Applicat
   for (const room of rooms) {
     for (const col of room.columns) {
       for (const c of col.classes) {
-        if (input.classIds.includes(c.id)) classLabels.push(classFullLabel(room.name, c.title, c.subtitle));
+        if (input.classIds.includes(c.id)) classLabels.push(c.full);
       }
     }
   }
@@ -108,24 +116,26 @@ export async function submitApplication(raw: ApplicationInput): Promise<Applicat
 
   const [row] = await sql<{ id: string }[]>`
     insert into undercover.applications
-      (vezeteknev, keresztnev, email, szuletes, szulo_nev, szulo_email,
-       tapasztalat, kezdes, megjegyzes, classes, consent_at, ip_hash)
+      (nev, email, telefon, szuletes, szulo_nev, szulo_email,
+       tapasztalat, megjegyzes, classes, consent_at, privacy_ack_at, ip_hash)
     values
-      (${input.vezeteknev}, ${input.keresztnev}, ${input.email.toLowerCase()}, ${input.szuletes},
+      (${input.nev}, ${input.email.toLowerCase()}, ${input.telefon}, ${input.szuletes},
        ${minor ? input.szulo_nev : null}, ${minor ? input.szulo_email.toLowerCase() : null},
-       ${input.tapasztalat}, ${input.kezdes}, ${input.megjegyzes}, ${classLabels}, now(), ${ipHash})
+       ${input.tapasztalat || null}, ${input.megjegyzes}, ${classLabels}, now(), now(), ${ipHash})
     returning id`;
 
   // E-mailek a válasz elküldése UTÁN — a látogatónak nem kell rájuk várnia.
   after(async () => {
-    const name = `${input.vezeteknev} ${input.keresztnev}`;
+    const name = input.nev;
     const rows: [string, string][] = [
       ["Név", name],
       ["E-mail", input.email],
+      ["Telefon", input.telefon],
       ["Születési dátum", input.szuletes],
     ];
     if (minor) rows.push(["Szülő", `${input.szulo_nev} · ${input.szulo_email}`]);
-    rows.push(["Tánctapasztalat", input.tapasztalat], ["Kezdés", input.kezdes], ["Órák", classLabels.join("\n")]);
+    if (input.tapasztalat) rows.push(["Tánctapasztalat", input.tapasztalat]);
+    rows.push(["Órák", classLabels.join("\n")]);
     if (input.megjegyzes) rows.push(["Megjegyzés", input.megjegyzes]);
 
     const notifyTo = process.env.APPLICATION_NOTIFY_EMAIL;
@@ -146,7 +156,7 @@ export async function submitApplication(raw: ApplicationInput): Promise<Applicat
     if (process.env.APPLICANT_CONFIRMATION_ENABLED === "true") {
       const mail = renderEmail({
         title: "Köszönjük a jelentkezést!",
-        intro: `Kedves ${input.keresztnev}! Megkaptuk a jelentkezésedet, hamarosan keresünk a megadott e-mail címen.`,
+        intro: `Kedves ${input.nev}! Megkaptuk a jelentkezésedet, hamarosan keresünk a megadott e-mail címen.`,
         rows,
         outro: "Ha valamit módosítanál, egyszerűen válaszolj erre az e-mailre.",
       });

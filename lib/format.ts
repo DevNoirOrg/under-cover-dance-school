@@ -6,9 +6,13 @@ export function newsDateLabel(isoDate: string): string {
   return `${y}. ${MONTHS[m - 1]} ${d}`;
 }
 
-/** A jelentkezésbe kerülő teljes óraleírás: "Nagy terem · Hétfő · 17:00 Beginner — NewJeans Style". */
-export function classFullLabel(roomName: string, title: string, subtitle: string): string {
-  return subtitle ? `${roomName} · ${title} — ${subtitle}` : `${roomName} · ${title}`;
+/**
+ * A jelentkezésbe kerülő teljes óraleírás:
+ * "Közepes terem · Hétfő · Szerda · 16:00–17:00 · Kezdő Tini K-pop — Jula · 12+".
+ */
+export function classFullLabel(roomName: string, columnHeading: string, title: string, subtitle: string): string {
+  const head = [roomName, columnHeading, title].filter((x) => x.trim()).join(" · ");
+  return subtitle.trim() ? `${head} — ${subtitle}` : head;
 }
 
 /** Kép/videó címe: "/..." = a public mappából, egyébként a Supabase Storage-ból. */

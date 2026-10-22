@@ -33,9 +33,7 @@ async function ApplicationPageContent({ params }: { params: Promise<{ id: string
         ← Vissza a listához
       </Link>
       <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="font-title text-3xl font-black">
-          {a.vezeteknev} {a.keresztnev}
-        </h1>
+        <h1 className="font-title text-3xl font-black">{a.nev}</h1>
         <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest ${status?.badge}`}>{status?.label}</span>
       </div>
 
@@ -48,6 +46,13 @@ async function ApplicationPageContent({ params }: { params: Promise<{ id: string
                 {a.email}
               </a>
             </Row>
+            {a.telefon && (
+              <Row k="Telefon">
+                <a className="text-uc-deep underline" href={`tel:${a.telefon.replace(/[^\d+]/g, "")}`}>
+                  {a.telefon}
+                </a>
+              </Row>
+            )}
             <Row k="Születési dátum">{a.szuletes}</Row>
             {a.szuloNev && (
               <Row k="Szülő">
@@ -57,8 +62,8 @@ async function ApplicationPageContent({ params }: { params: Promise<{ id: string
                 </a>
               </Row>
             )}
-            <Row k="Tánctapasztalat">{a.tapasztalat}</Row>
-            <Row k="Kezdés">{a.kezdes}</Row>
+            <Row k="Tánctapasztalat">{a.tapasztalat ?? <span className="text-slate-400">nem adta meg</span>}</Row>
+            {a.kezdes && <Row k="Kezdés">{a.kezdes}</Row>}
             <Row k="Órák">
               <ul className="space-y-1">
                 {a.classes.map((c) => (
@@ -67,7 +72,9 @@ async function ApplicationPageContent({ params }: { params: Promise<{ id: string
               </ul>
             </Row>
             {a.megjegyzes && <Row k="Megjegyzés">{a.megjegyzes}</Row>}
-            <Row k="Adatkezelés">Hozzájárult</Row>
+            <Row k="Adatkezelés">
+              {a.privacyAckAt ? "Elfogadta a tájékoztatót és hozzájárult az adatkezeléshez" : "Hozzájárult"}
+            </Row>
           </dl>
         </Card>
         <ApplicationActions

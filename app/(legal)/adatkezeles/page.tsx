@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element -- a logók a design szerinti egyszerű <img>-ek */
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Fragment } from "react";
+import { SubpageFooter, SubpageHeader } from "@/components/Subpage";
 import { getSiteContent } from "@/lib/content";
 import { parsePrivacyText, type PrivacyBlock } from "@/lib/privacy-text";
 
@@ -37,20 +36,7 @@ export default async function AdatkezelesPage() {
 
   return (
     <>
-      {/* Fejléc */}
-      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-6 h-20 flex items-center justify-between gap-6">
-          <Link href="/" aria-label="Vissza a főoldalra">
-            <img src="/under_cover_logo_chrome.png" alt="Under Cover" className="h-11 w-auto" />
-          </Link>
-          <Link
-            href="/"
-            className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500 hover:text-uc-deep transition-colors"
-          >
-            ← Vissza a főoldalra
-          </Link>
-        </div>
-      </header>
+      <SubpageHeader />
 
       <main className="px-6 pt-16 pb-28">
         <div className="max-w-4xl mx-auto">
@@ -102,12 +88,7 @@ export default async function AdatkezelesPage() {
         </div>
       </main>
 
-      <footer className="px-6 py-10 bg-ink text-white">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <img src="/under_cover_logo_feher.png" alt="Under Cover" className="h-14 w-auto" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{settings.footer.copyright}</p>
-        </div>
-      </footer>
+      <SubpageFooter copyright={settings.footer.copyright} />
     </>
   );
 }

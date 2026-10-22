@@ -14,12 +14,31 @@ export default function Footer({ footer }: { footer: FooterContent }) {
             className="h-20 md:h-28 w-auto select-none"
             draggable={false}
           />
-          <div className="grid grid-cols-2 gap-16">
+          <div className="grid sm:grid-cols-[minmax(0,22rem)_auto] gap-12 sm:gap-16">
             <div className="space-y-4">
-              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">Helyszínek</h4>
+              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">Elérhetőségek</h4>
               <ul className="text-sm font-medium text-slate-400 space-y-2">
+                {footer.email && (
+                  <li>
+                    E-mail:{" "}
+                    <a href={`mailto:${footer.email}`} className="hover:text-uc transition-colors break-all">
+                      {footer.email}
+                    </a>
+                  </li>
+                )}
+                {footer.phone && (
+                  <li>
+                    Tel.:{" "}
+                    <a href={`tel:${footer.phone.replace(/[^\d+]/g, "")}`} className="hover:text-uc transition-colors whitespace-nowrap">
+                      {footer.phone}
+                    </a>
+                  </li>
+                )}
                 {footer.locations.map((l, i) => (
-                  <li key={i}>{l}</li>
+                  <li key={i}>
+                    {l.text}
+                    {l.note && <span className="block text-xs text-slate-500 mt-0.5">{l.note}</span>}
+                  </li>
                 ))}
               </ul>
             </div>

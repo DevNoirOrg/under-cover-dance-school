@@ -14,6 +14,10 @@ const tabBase =
 const tabActive = "bg-white text-ink shadow-lg";
 const tabInactive = "text-white/70 hover:text-white transition-colors";
 
+/* 1–3 oszlop: mobilon oszlopszélességgel görgethető (2 oszlopnál szélesebb kártyák, a hosszabb óranevek miatt). */
+const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3" };
+const MIN_WIDTH: Record<number, string> = { 1: "min-w-0", 2: "min-w-[600px]", 3: "min-w-[690px]" };
+
 function SchedulePanel({
   room,
   active,
@@ -24,6 +28,8 @@ function SchedulePanel({
   onScrollRef: (el: HTMLDivElement | null) => void;
 }) {
   const { isSelected, setChecked } = useSelection();
+  const count = room.columns.length;
+  const last = count - 1;
 
   return (
     <div
@@ -33,22 +39,22 @@ function SchedulePanel({
     >
       {/* Mobilon vízszintesen görgethető; md-től teljes szélességű rács. */}
       <div ref={onScrollRef} className="schedule-scroll overflow-x-auto snap-x snap-proximity">
-        <div className="min-w-[690px] md:min-w-0">
-          <div className="grid grid-cols-3 bg-white/20">
+        <div className={`${MIN_WIDTH[count] ?? MIN_WIDTH[3]} md:min-w-0`}>
+          <div className={`grid ${GRID_COLS[count] ?? GRID_COLS[3]} bg-white/20`}>
             {room.columns.map((col, i) => (
               <div
                 key={i}
-                className={`${i < 2 ? "border-r border-white/20 " : ""}p-5 md:p-8 text-center font-bold text-[11px] md:text-sm uppercase tracking-widest text-white`}
+                className={`${i < last ? "border-r border-white/20 " : ""}p-5 md:p-8 text-center font-bold text-[11px] md:text-sm uppercase tracking-widest text-white`}
               >
                 {col.heading}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-3" style={{ minHeight: room.minHeightPx }}>
+          <div className={`grid ${GRID_COLS[count] ?? GRID_COLS[3]}`} style={{ minHeight: room.minHeightPx }}>
             {room.columns.map((col, i) => (
               <div
                 key={i}
-                className={`p-4 md:p-6 ${i < 2 ? "border-r border-white/20 " : ""}border-t border-white/20 flex flex-col gap-4 snap-start`}
+                className={`p-4 md:p-6 ${i < last ? "border-r border-white/20 " : ""}border-t border-white/20 flex flex-col gap-4 snap-start`}
               >
                 {col.classes.map((c) => (
                   <label key={c.id} className="class-option block">
@@ -158,7 +164,8 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
           />
         ))}
 
-        <p className="md:hidden text-center text-white/50 text-[10px] font-extrabold uppercase tracking-widest mt-4">
+        {/* a mobilos „csúsztasd” jelzés csak akkor kell, ha van több oszlopos terem */}
+        <p hidden={!rooms.some((r) => r.columns.length > 1)} className="md:hidden text-center text-white/50 text-[10px] font-extrabold uppercase tracking-widest mt-4">
           ← Csúsztasd oldalra a többi napért →
         </p>
 
@@ -172,7 +179,7 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
               {n === 0 ? "Még nem választottál órát" : `${n} óra kiválasztva`}
             </p>
             <p className="text-white/60 text-[11px] font-extrabold uppercase tracking-widest mt-2">
-              {n === 0 ? "Koppints egy órára az órarendben" : "Többet is választhatsz, vagy vedd le a chipről"}
+              {n === 0 ? "Koppints egy órára az órarendben" : "Többet is választhatsz, vagy távolítsd el a kijelölést"}
             </p>
             <div className="flex flex-wrap gap-2 mt-4">
               {selected.map((c) => (

@@ -4,7 +4,7 @@ Next.js (App Router) + TypeScript + Tailwind CSS v4 weboldal admin felülettel.
 A publikus oldal kinézete 1:1 a `md designs/under_cover_18` design alapján készült;
 minden tartalma az adminból szerkeszthető.
 
-- **Publikus oldal:** `/`, `/adatkezeles` — statikus, gyorsítótárazott; admin mentéskor azonnal frissül.
+- **Publikus oldal:** `/`, `/hirek`, `/hirek/<webcím>`, `/adatkezeles` — statikus, gyorsítótárazott; admin mentéskor azonnal frissül.
 - **Admin:** `/admin` (vagy `admin.<domain>`, ha be van állítva az `ADMIN_HOST`).
 - **Adatok:** Supabase (Postgres + Auth + Storage), a közös (MD-vel megosztott) projekt
   `undercover` sémájában.
@@ -22,7 +22,13 @@ minden tartalma az adminból szerkeszthető.
 2. Nyisd meg a `supabase/undercover-seed.sql` fájlt, **cseréld ki** benne az
    `admin@example.com` címet a saját e-mail címedre, és futtasd le. Ez feltölti a
    mostani tartalmat (órarend, árak, hírek, szövegek) és felveszi az első admint.
-3. *(Ajánlott)* **Integrations → Cron → Enable**, majd futtasd újra az `undercover.sql`-t.
+   *(Új telepítésnél ennyi elég — a seed már a 2026. októberi tartalmat tartalmazza.)*
+3. **Meglévő adatbázisnál** a változásokat a dátumozott fájlok hozzák (sorrendben, egyszer):
+   - `supabase/2026-10-22-tartalom.sql` — 1–3 oszlopos órarend, hírek saját oldallal és
+     teljes szöveggel, új jelentkezési mezők (teljes név, telefon, két hozzájárulás), és az
+     ügyfél októberi tartalma (hero, rólunk, órarend, hírek, árak, lábléc).
+     **Figyelem:** az órarendet, a híreket és az árakat felülírja!
+4. *(Ajánlott)* **Integrations → Cron → Enable**, majd futtasd újra az `undercover.sql`-t.
    Ez állítja be, hogy az 1 évnél régebbi jelentkezések automatikusan törlődjenek
    (ahogy az adatkezelési tájékoztató írja).
 
@@ -96,11 +102,12 @@ a fő domainen az `/admin` 404-et ad. `ADMIN_HOST` nélkül az admin a `/admin` 
 | --- | --- |
 | Áttekintés | új jelentkezések száma, ki mit módosított utoljára |
 | Jelentkezések | lista státusz szerint (új / felvettük / elutasítva / archivált), részletek, belső megjegyzés, törlés, CSV export |
-| Órarend | termek (új is), 3 oszlop átírható címmel, órák húzással rendezhetők |
+| Órarend | termek (új is), termenként 1–3 oszlop átírható címmel, órák húzással rendezhetők |
 | Árak | tételek (két oszlopban jelennek meg), megjegyzések |
-| Hírek | új / szerkesztés / törlés, képfeltöltés — a főoldalon a 3 legfrissebb látszik |
-| Hero, Rólunk, Lábléc | szövegek, képek, álló videó (MP4, max. 50 MB) |
-| Form opciók | a jelentkezési form legördülő mezői |
+| Hírek | új / szerkesztés / törlés, kártyakép, webcím, a teljes szöveg Word-szerű szerkesztővel (képpel, linkkel) — a főoldalon a 3 legfrissebb látszik, mind a `/hirek` oldalon |
+| Hero, Rólunk | szövegek (Rólunk: üres sor = új bekezdés; a számsor elhagyható), képek, álló videó (MP4, max. 50 MB) |
+| Lábléc | elérhetőségek (e-mail, telefon, helyszínek), közösségi linkek, alsó sor |
+| Form opciók | a „Táncoltál már korábban?” mező opciói |
 | Adatkezelés | a tájékoztató sima szövegként (`# cím`, `- felsorolás`, üres sor = új bekezdés) |
 | Adminok | ki léphet be |
 
@@ -111,13 +118,14 @@ Minden mentés azonnal megjelenik a publikus oldalon.
 
 ```
 app/(site)/            publikus főoldal
-app/(legal)/           adatkezelési tájékoztató
+app/(legal)/           adatkezelési tájékoztató, hírek (/hirek, /hirek/[slug])
 app/(admin)/admin/     admin (belepes + (panel)/…)
 app/actions/           Server Actionök: admin.ts (szerkesztés), auth.ts (belépés),
                        applications.ts (jelentkezés beküldése)
 components/            publikus szekciók · components/admin/ = admin UI
 lib/content.ts         a publikus tartalom olvasása (gyorsítótár: "site-content" tag)
 lib/admin-data.ts      admin írás/olvasás, edit_log, régi fájlok törlése
+lib/news-html.ts       a hírek HTML-jének megtisztítása mentéskor
 lib/auth.ts            admin jogosultság (Supabase user + undercover.admins)
 proxy.ts               admin subdomain + munkamenet frissítés
 supabase/              SQL séma + kezdő tartalom

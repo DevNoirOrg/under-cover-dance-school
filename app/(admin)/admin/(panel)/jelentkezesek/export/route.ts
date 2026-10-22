@@ -11,14 +11,14 @@ export async function GET(request: Request) {
   const apps = await listApplications(status);
 
   const cell = (v: string | null | undefined) => `"${(v ?? "").replace(/"/g, '""')}"`;
-  const header = ["Beküldve", "Státusz", "Vezetéknév", "Keresztnév", "E-mail", "Születési dátum", "Szülő neve", "Szülő e-mail", "Tánctapasztalat", "Kezdés", "Órák", "Megjegyzés", "Belső megjegyzés"];
+  const header = ["Beküldve", "Státusz", "Név", "E-mail", "Telefon", "Születési dátum", "Szülő neve", "Szülő e-mail", "Tánctapasztalat", "Kezdés", "Órák", "Megjegyzés", "Belső megjegyzés"];
   const lines = apps.map((a) =>
     [
       new Date(a.createdAt).toLocaleString("hu-HU"),
       STATUSES.find((s) => s.id === a.status)?.label,
-      a.vezeteknev,
-      a.keresztnev,
+      a.nev,
       a.email,
+      a.telefon,
       a.szuletes,
       a.szuloNev,
       a.szuloEmail,

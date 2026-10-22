@@ -61,13 +61,14 @@ export default function LogoMark() {
       mount!.style.height = base.height + "px";
       mount!.style.transformOrigin = "0 0";
 
-      // A navot egy pillanatra — animáció nélkül — a helyére tesszük, hogy a
-      // dokk NYUGALMI helyzetét mérhessük akkor is, ha épp rejtve van.
+      // A navot egy pillanatra — animáció nélkül — a nyugalmi helyére tesszük,
+      // hogy a dokk helyét mérhessük akkor is, ha épp rejtve van, VAGY épp
+      // beúszik (pl. újratöltéskor görgetett állapotban a betűtípusok
+      // betöltése utáni újramérés a nav beúszása közben futna le).
       const wasHidden = nav!.classList.contains("nav-hidden");
-      if (wasHidden) {
-        nav!.style.transition = "none";
-        nav!.classList.remove("nav-hidden");
-      }
+      nav!.style.transition = "none";
+      nav!.style.transform = "none";
+      nav!.classList.remove("nav-hidden");
       const r = dock!.getBoundingClientRect();
       const dockedHeight = r.width / ASPECT;
       dockRect = {
@@ -75,11 +76,10 @@ export default function LogoMark() {
         left: r.left,
         width: r.width,
       };
-      if (wasHidden) {
-        nav!.classList.add("nav-hidden");
-        void nav!.offsetHeight;
-        nav!.style.transition = "";
-      }
+      if (wasHidden) nav!.classList.add("nav-hidden");
+      nav!.style.transform = "";
+      void nav!.offsetHeight;
+      nav!.style.transition = "";
     }
 
     function updateNavVisibility() {

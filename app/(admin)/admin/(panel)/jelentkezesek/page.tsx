@@ -63,7 +63,7 @@ async function ApplicationsPageContent({ searchParams }: { searchParams: Promise
                     <span className="w-28 shrink-0 text-xs font-semibold text-slate-400">{fmt(a.createdAt)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-bold">
-                        {a.vezeteknev} {a.keresztnev}
+                        {a.nev}
                         {a.szuloNev && <span className="ml-2 text-[10px] font-extrabold uppercase tracking-widest text-uc-deep">16 év alatti</span>}
                       </span>
                       <span className="block truncate text-xs text-slate-500">{a.classes.join(" · ")}</span>

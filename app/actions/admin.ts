@@ -8,6 +8,7 @@ import { getSetting, removeMedia, saveSetting, touch } from "@/lib/admin-data";
 import { assertAdmin } from "@/lib/auth";
 import { CONTENT_TAG } from "@/lib/content";
 import { db } from "@/lib/db";
+import { bodyMediaPaths, sanitizeNewsHtml } from "@/lib/news-html";
 import { MEDIA_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -19,7 +20,7 @@ import { supabaseServer } from "@/lib/supabase/server";
     4) azonnal frissíti a publikus oldalt (updateTag).
 */
 
-export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
+export type ActionResult = { ok: true; id?: string; slug?: string; bodyHtml?: string } | { ok: false; error: string };
 
 const fail = (error: string): ActionResult => ({ ok: false, error });
 
@@ -78,9 +79,9 @@ export async function createUploadTarget(
 // ---------------------------------------------------------------------
 const heroSchema = z.object({
   badge: required(40, "Jelvény"),
-  leadBefore: text(200, "Szöveg eleje"),
-  leadHighlight: text(80, "Kiemelt szó"),
-  leadAfter: text(200, "Szöveg vége"),
+  leadBefore: text(500, "Szöveg"),
+  leadHighlight: text(120, "Kiemelt rész"),
+  leadAfter: text(300, "Szöveg vége"),
   primaryCtaLabel: required(40, "Fő gomb felirata"),
   secondaryCtaLabel: required(40, "Második gomb felirata"),
   videoPath: mediaPath.nullable(),
@@ -105,7 +106,7 @@ export async function saveHero(input: z.input<typeof heroSchema>) {
 const aboutSchema = z.object({
   titleLine1: required(80, "Cím 1. sor"),
   titleLine2: text(80, "Cím 2. sor"),
-  paragraph: text(1000, "Bekezdés"),
+  paragraph: text(5000, "Bekezdések"),
   highlight: text(500, "Kiemelt bekezdés"),
   stats: z
     .array(z.object({ value: required(12, "Szám"), label: required(30, "Felirat") }))
@@ -129,7 +130,13 @@ export async function saveAbout(input: z.input<typeof aboutSchema>) {
 //  Lábléc
 // ---------------------------------------------------------------------
 const footerSchema = z.object({
-  locations: z.array(required(120, "Helyszín")).max(6),
+  email: z
+    .string()
+    .trim()
+    .max(120)
+    .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), "Érvénytelen e-mail cím."),
+  phone: text(40, "Telefonszám"),
+  locations: z.array(z.object({ text: required(160, "Helyszín"), note: text(200, "Megjegyzés") })).max(6),
   socials: z
     .array(
       z.object({
@@ -162,7 +169,6 @@ export async function saveFooter(input: z.input<typeof footerSchema>) {
 // ---------------------------------------------------------------------
 const formOptionsSchema = z.object({
   experience: z.array(required(80, "Opció")).min(1, "Legalább egy opció kell.").max(12),
-  start: z.array(required(80, "Opció")).min(1, "Legalább egy opció kell.").max(12),
 });
 
 export async function saveFormOptions(input: z.input<typeof formOptionsSchema>) {
@@ -233,19 +239,19 @@ const roomSchema = z.object({
   name: required(40, "Terem neve"),
   shortName: required(20, "Terem rövid neve"),
   minHeightPx: z.number().int().min(120).max(600),
-  headings: z.tuple([required(40, "Oszlopcím"), required(40, "Oszlopcím"), required(40, "Oszlopcím")]),
-  columns: z.tuple([z.array(classSchema).max(12), z.array(classSchema).max(12), z.array(classSchema).max(12)]),
-});
+  headings: z.array(required(40, "Oszlopcím")).min(1, "Legalább egy oszlop kell.").max(3, "Legfeljebb 3 oszlop lehet."),
+  columns: z.array(z.array(classSchema).max(20)).min(1).max(3),
+}).refine((r) => r.headings.length === r.columns.length, "Az oszlopok száma nem egyezik.");
 const scheduleSchema = z.object({ rooms: z.array(roomSchema).min(1, "Legalább egy terem kell.").max(6) });
 
-function slugify(s: string) {
+function slugify(s: string, fallback = "terem") {
   return (
     s
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "terem"
+      .replace(/^-+|-+$/g, "") || fallback
   );
 }
 
@@ -295,42 +301,71 @@ export async function saveSchedule(input: z.input<typeof scheduleSchema>) {
 const newsSchema = z.object({
   id: z.string().uuid().optional(),
   publishedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Adj meg egy dátumot."),
-  title: required(120, "Cím"),
+  slug: z
+    .string()
+    .trim()
+    .max(100, "Webcím: legfeljebb 100 karakter.")
+    .refine((v) => v === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v), "Webcím: csak kisbetű, szám és kötőjel."),
+  title: required(160, "Cím"),
   excerpt: text(400, "Rövid szöveg"),
+  bodyHtml: z.string().max(200_000, "A hír szövege túl hosszú."),
   imagePath: mediaPath.nullable(),
   imageAlt: text(200, "Kép leírása"),
   placeholderLabel: text(30, "Helyőrző felirat"),
 });
 
+/** Egyedi webcím: a megadott vagy a címből képzett slug, ütközés esetén -2, -3… */
+async function uniqueNewsSlug(wanted: string, title: string, ownId: string | undefined) {
+  const base = (wanted || slugify(title, "hir")).slice(0, 90).replace(/-+$/, "");
+  const rows = await db()<{ slug: string }[]>`
+    select slug from undercover.news where (slug = ${base} or slug like ${base + "-%"})
+      and (${ownId ?? null}::uuid is null or id <> ${ownId ?? null}::uuid)`;
+  const taken = new Set(rows.map((r) => r.slug));
+  let slug = base;
+  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+  return slug;
+}
+
 export async function saveNews(input: z.input<typeof newsSchema>) {
   return run(async (email) => {
     const n = newsSchema.parse(input);
+    const body = sanitizeNewsHtml(n.bodyHtml);
     let oldImage: string | null = null;
+    let oldBody = "";
     let id = n.id;
+    const slug = await uniqueNewsSlug(n.slug, n.title, id);
     if (id) {
-      const [old] = await db()<{ image_path: string | null }[]>`select image_path from undercover.news where id = ${id}`;
+      const [old] = await db()<{ image_path: string | null; body_html: string }[]>`
+        select image_path, body_html from undercover.news where id = ${id}`;
       if (!old) return fail("Ez a hír időközben törölve lett.");
       oldImage = old.image_path;
-      await db()`update undercover.news set published_on = ${n.publishedOn}, title = ${n.title}, excerpt = ${n.excerpt},
-        image_path = ${n.imagePath}, image_alt = ${n.imageAlt || null}, placeholder_label = ${n.placeholderLabel},
-        updated_at = now(), updated_by = ${email} where id = ${id}`;
+      oldBody = old.body_html;
+      await db()`update undercover.news set published_on = ${n.publishedOn}, slug = ${slug}, title = ${n.title},
+        excerpt = ${n.excerpt}, body_html = ${body}, image_path = ${n.imagePath}, image_alt = ${n.imageAlt || null},
+        placeholder_label = ${n.placeholderLabel}, updated_at = now(), updated_by = ${email} where id = ${id}`;
     } else {
       id = randomUUID();
-      await db()`insert into undercover.news (id, published_on, title, excerpt, image_path, image_alt, placeholder_label, updated_by)
-        values (${id}, ${n.publishedOn}, ${n.title}, ${n.excerpt}, ${n.imagePath}, ${n.imageAlt || null}, ${n.placeholderLabel}, ${email})`;
+      await db()`insert into undercover.news
+        (id, published_on, slug, title, excerpt, body_html, image_path, image_alt, placeholder_label, updated_by)
+        values (${id}, ${n.publishedOn}, ${slug}, ${n.title}, ${n.excerpt}, ${body}, ${n.imagePath},
+          ${n.imageAlt || null}, ${n.placeholderLabel}, ${email})`;
     }
     if (oldImage && oldImage !== n.imagePath) await removeMedia(oldImage);
+    // a szövegből kikerült (feltöltött) képek törlése
+    const kept = new Set(bodyMediaPaths(body));
+    for (const p of bodyMediaPaths(oldBody)) if (!kept.has(p)) await removeMedia(p);
     await touch("news", email);
     updateTag(CONTENT_TAG);
-    return { ok: true, id };
+    return { ok: true, id, slug, bodyHtml: body };
   });
 }
 
 export async function deleteNews(id: string) {
   return run(async (email) => {
-    const rows = await db()<{ image_path: string | null }[]>`
-      delete from undercover.news where id = ${z.string().uuid().parse(id)} returning image_path`;
+    const rows = await db()<{ image_path: string | null; body_html: string }[]>`
+      delete from undercover.news where id = ${z.string().uuid().parse(id)} returning image_path, body_html`;
     await removeMedia(rows[0]?.image_path);
+    for (const p of bodyMediaPaths(rows[0]?.body_html ?? "")) await removeMedia(p);
     await touch("news", email);
     updateTag(CONTENT_TAG);
   });

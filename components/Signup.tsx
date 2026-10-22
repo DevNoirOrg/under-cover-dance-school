@@ -11,6 +11,7 @@ import { SelectionChip, useSelection } from "./selection";
   Viselkedés (1:1 a designnal):
    - a kiválasztott órák az órarendből jönnek (chipek a form tetején)
    - 16 év alatt a szülő neve + e-mail címe kötelezővé válik
+   - a tánctapasztalat nem kötelező; két külön kötelező jelölőnégyzet
    - magyar nyelvű, mezőnkénti validáció; egy mező csak akkor piros, ha
      a látogató már hozzányúlt, vagy megpróbálta beküldeni
    - az első sikertelen beküldés után a hibák élőben frissülnek
@@ -18,45 +19,42 @@ import { SelectionChip, useSelection } from "./selection";
 */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Telefonszám: számjegyek, szóköz, +, -, /, zárójel; legalább 7 számjegy. */
+const PHONE_RE = /^\+?[\d\s\-()/]+$/;
 
 type Values = {
-  vezeteknev: string;
-  keresztnev: string;
+  nev: string;
   email: string;
+  telefon: string;
   szuletes: string;
   szulo_nev: string;
   szulo_email: string;
   tapasztalat: string;
-  kezdes: string;
   megjegyzes: string;
 };
 
 const emptyValues: Values = {
-  vezeteknev: "",
-  keresztnev: "",
+  nev: "",
   email: "",
+  telefon: "",
   szuletes: "",
   szulo_nev: "",
   szulo_email: "",
   tapasztalat: "",
-  kezdes: "",
   megjegyzes: "",
 };
 
 type FieldKey = keyof Values;
 /** A kötelező mezők a DOM sorrendjében (az első hibásra görgetünk). */
-const REQUIRED_ORDER: FieldKey[] = [
-  "vezeteknev",
-  "keresztnev",
-  "email",
-  "szuletes",
-  "szulo_nev",
-  "szulo_email",
-  "tapasztalat",
-  "kezdes",
-];
-const CONSENT = "adatkezeles";
-type ErrorKey = FieldKey | typeof CONSENT;
+const REQUIRED_ORDER: FieldKey[] = ["nev", "email", "telefon", "szuletes", "szulo_nev", "szulo_email"];
+/** A két kötelező jelölőnégyzet: tájékoztató elfogadása + hozzájárulás az adatkezeléshez. */
+const CONSENTS = ["tajekoztato", "adatkezeles"] as const;
+type ConsentKey = (typeof CONSENTS)[number];
+type ErrorKey = FieldKey | ConsentKey;
+const CONSENT_ERRORS: Record<ConsentKey, string> = {
+  tajekoztato: "A jelentkezéshez el kell fogadnod az Adatkezelési tájékoztatót.",
+  adatkezeles: "A jelentkezéshez hozzá kell járulnod az adataid kezeléséhez.",
+};
 
 const fid = (k: ErrorKey) => `f-${k}`;
 
@@ -73,11 +71,12 @@ function ageFrom(value: string): number | null {
 
 function fieldMessage(k: FieldKey, v: string): string | null {
   const value = v.trim();
-  if (!value) {
-    return k === "tapasztalat" || k === "kezdes" ? "Válassz egy lehetőséget." : "Ezt a mezőt kötelező kitölteni.";
-  }
+  if (!value) return "Ezt a mezőt kötelező kitölteni.";
   if ((k === "email" || k === "szulo_email") && !EMAIL_RE.test(value)) {
     return "Adj meg egy érvényes e-mail címet.";
+  }
+  if (k === "telefon" && (!PHONE_RE.test(value) || value.replace(/\D/g, "").length < 7)) {
+    return "Adj meg egy érvényes telefonszámot.";
   }
   if (k === "szuletes") {
     const a = ageFrom(value);
@@ -114,7 +113,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
   const { selected, clear } = useSelection();
 
   const [values, setValues] = useState<Values>(emptyValues);
-  const [consent, setConsent] = useState(false);
+  const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({ tajekoztato: false, adatkezeles: false });
   /** Igaz, ha a látogató már megpróbálta beküldeni a formot. */
   const [submitTried, setSubmitTried] = useState(false);
   /** Mezők, amikhez a látogató már hozzányúlt. */
@@ -139,7 +138,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
     const msg = fieldMessage(k, values[k]);
     if (msg) invalidFields[k] = msg;
   }
-  if (!consent) invalidFields[CONSENT] = "A jelentkezéshez hozzá kell járulnod az adataid kezeléséhez.";
+  for (const c of CONSENTS) if (!consents[c]) invalidFields[c] = CONSENT_ERRORS[c];
   const noSelection = selected.length === 0;
 
   // Hibát csak az első beküldési kísérlet után mutatunk; utána egy mező akkor
@@ -189,15 +188,15 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
     let result;
     try {
       result = await submitApplication({
-        vezeteknev: values.vezeteknev,
-        keresztnev: values.keresztnev,
+        nev: values.nev,
         email: values.email,
+        telefon: values.telefon,
         szuletes: values.szuletes,
         szulo_nev: minor ? values.szulo_nev : "",
         szulo_email: minor ? values.szulo_email : "",
         tapasztalat: values.tapasztalat,
-        kezdes: values.kezdes,
         megjegyzes: values.megjegyzes,
+        tajekoztato: true,
         adatkezeles: true,
         classIds: selected.map((c) => c.id),
         website,
@@ -214,13 +213,13 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
     const data = { ...values, valasztott_orak: selected.map((c) => c.full) };
     const rows: [string, React.ReactNode][] = [
-      ["Név", data.vezeteknev + " " + data.keresztnev],
+      ["Név", data.nev],
       ["E-mail", data.email],
+      ["Telefon", data.telefon],
       ["Születési dátum", data.szuletes],
     ];
     if (minor) rows.push(["Szülő", data.szulo_nev + " · " + data.szulo_email]);
-    rows.push(["Tánctapasztalat", data.tapasztalat]);
-    rows.push(["Kezdés", data.kezdes]);
+    if (data.tapasztalat) rows.push(["Tánctapasztalat", data.tapasztalat]);
     rows.push([
       "Órák",
       data.valasztott_orak.map((o, i) => (
@@ -236,7 +235,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
   function restart() {
     setValues(emptyValues);
-    setConsent(false);
+    setConsents({ tajekoztato: false, adatkezeles: false });
     setSubmitTried(false);
     setTouched(new Set());
     setFlaggedAtSubmit(new Set());
@@ -302,52 +301,56 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className={labelClass} htmlFor="f-vezeteknev">
-                Vezetéknév <Req />
+              <label className={labelClass} htmlFor="f-nev">
+                Teljes név (Táncos) <Req />
               </label>
               <input
                 type="text"
-                id="f-vezeteknev"
-                name="vezeteknev"
-                placeholder="Kovács"
-                className={cls("vezeteknev")}
-                value={values.vezeteknev}
-                onChange={set("vezeteknev")}
+                id="f-nev"
+                name="nev"
+                autoComplete="name"
+                placeholder="Kovács Emma"
+                className={cls("nev")}
+                value={values.nev}
+                onChange={set("nev")}
               />
-              <FieldError message={errFor("vezeteknev")} />
+              <FieldError message={errFor("nev")} />
             </div>
-            <div className="space-y-3">
-              <label className={labelClass} htmlFor="f-keresztnev">
-                Keresztnév <Req />
-              </label>
-              <input
-                type="text"
-                id="f-keresztnev"
-                name="keresztnev"
-                placeholder="Emma"
-                className={cls("keresztnev")}
-                value={values.keresztnev}
-                onChange={set("keresztnev")}
-              />
-              <FieldError message={errFor("keresztnev")} />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className={labelClass} htmlFor="f-email">
-                E-mail címed (Táncos) <Req />
+                E-mail cím (Táncos) <Req />
               </label>
               <input
                 type="email"
                 id="f-email"
                 name="email"
+                autoComplete="email"
                 placeholder="hello@valami.hu"
                 className={cls("email")}
                 value={values.email}
                 onChange={set("email")}
               />
               <FieldError message={errFor("email")} />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className={labelClass} htmlFor="f-telefon">
+                Telefonszám <Req />
+              </label>
+              <input
+                type="tel"
+                id="f-telefon"
+                name="telefon"
+                autoComplete="tel"
+                inputMode="tel"
+                placeholder="+36 30 123 4567"
+                className={cls("telefon")}
+                value={values.telefon}
+                onChange={set("telefon")}
+              />
+              <FieldError message={errFor("telefon")} />
             </div>
 
             <div className="space-y-3">
@@ -407,53 +410,24 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className={labelClass} htmlFor="f-tapasztalat">
-                Táncoltál már korábban? <Req />
-              </label>
-              <select
-                id="f-tapasztalat"
-                name="tapasztalat"
-                className={cls(
-                  "tapasztalat",
-                  `form-select appearance-none cursor-pointer${values.tapasztalat ? "" : " is-empty"}`,
-                )}
-                value={values.tapasztalat}
-                onChange={set("tapasztalat")}
-              >
-                <option value="">Válassz…</option>
-                {formOptions.experience.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-              <FieldError message={errFor("tapasztalat")} />
-            </div>
-            <div className="space-y-3">
-              <label className={labelClass} htmlFor="f-kezdes">
-                Mikortól kezdenél? <Req />
-              </label>
-              <select
-                id="f-kezdes"
-                name="kezdes"
-                className={cls(
-                  "kezdes",
-                  `form-select appearance-none cursor-pointer${values.kezdes ? "" : " is-empty"}`,
-                )}
-                value={values.kezdes}
-                onChange={set("kezdes")}
-              >
-                <option value="">Válassz…</option>
-                {formOptions.start.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-              <FieldError message={errFor("kezdes")} />
-            </div>
+          <div className="space-y-3">
+            <label className={labelClass} htmlFor="f-tapasztalat">
+              Táncoltál már korábban?
+            </label>
+            <select
+              id="f-tapasztalat"
+              name="tapasztalat"
+              className={`${inputClass} form-select appearance-none cursor-pointer${values.tapasztalat ? "" : " is-empty"}`}
+              value={values.tapasztalat}
+              onChange={set("tapasztalat")}
+            >
+              <option value="">Válassz…</option>
+              {formOptions.experience.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-3">
@@ -471,37 +445,47 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             ></textarea>
           </div>
 
-          {/* ---- Adatkezelési hozzájárulás (kötelező) ---- */}
-          <div className="rounded-[28px] bg-slate-50 p-6">
-            <label htmlFor="f-adatkezeles" className="flex items-start gap-4 cursor-pointer">
-              <input
-                type="checkbox"
-                id="f-adatkezeles"
-                name="adatkezeles"
-                value="elfogadva"
-                className={`consent-box mt-0.5 h-6 w-6 shrink-0 cursor-pointer rounded-md accent-[#9147a1]${errors[CONSENT] ? " has-error" : ""}`}
-                checked={consent}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setTouched((prev) => new Set(prev).add(CONSENT));
-                  setConsent(checked);
-                }}
-              />
-              <span className="text-sm font-semibold leading-relaxed text-slate-600">
-                Elolvastam az{" "}
-                <a
-                  href="/adatkezeles"
-                  target="_blank"
-                  rel="noopener"
-                  className="font-bold text-uc-deep underline underline-offset-2 hover:text-ink"
-                >
-                  Adatkezelési tájékoztatót
-                </a>
-                , és hozzájárulok, hogy az Under Cover a jelentkezéskor megadott adataimat az abban foglaltak szerint
-                kezelje. <Req />
-              </span>
-            </label>
-            <FieldError className="field-error !ml-10 mt-2" message={errors[CONSENT]} />
+          {/* ---- Két kötelező jelölőnégyzet ---- */}
+          <div className="rounded-[28px] bg-slate-50 p-6 space-y-5">
+            {CONSENTS.map((c) => (
+              <div key={c}>
+                <label htmlFor={fid(c)} className="flex items-start gap-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id={fid(c)}
+                    name={c}
+                    value="elfogadva"
+                    className={`consent-box mt-0.5 h-6 w-6 shrink-0 cursor-pointer rounded-md accent-[#9147a1]${errors[c] ? " has-error" : ""}`}
+                    checked={consents[c]}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setTouched((prev) => new Set(prev).add(c));
+                      setConsents((prev) => ({ ...prev, [c]: checked }));
+                    }}
+                  />
+                  <span className="text-sm font-semibold leading-relaxed text-slate-600">
+                    {c === "tajekoztato" ? (
+                      <>
+                        Elolvastam és elfogadom az{" "}
+                        <a
+                          href="/adatkezeles"
+                          target="_blank"
+                          rel="noopener"
+                          className="font-bold text-uc-deep underline underline-offset-2 hover:text-ink"
+                        >
+                          Adatkezelési tájékoztatóban
+                        </a>{" "}
+                        foglaltakat.
+                      </>
+                    ) : (
+                      "Hozzájárulok a fenti adataim Adatkezelő által történő kezeléséhez."
+                    )}{" "}
+                    <Req />
+                  </span>
+                </label>
+                <FieldError className="field-error !ml-10 mt-2" message={errors[c]} />
+              </div>
+            ))}
           </div>
 
           <p

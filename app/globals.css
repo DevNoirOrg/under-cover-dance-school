@@ -502,7 +502,7 @@ body {
 }
 
 /* ====================================================================
-   Adatkezelési tájékoztató — az adatkezeles.html stílusai
+   Adatkezelési tájékoztató és hírek — az adatkezeles.html stílusai
    ==================================================================== */
 .doc h2 {
   @apply font-title font-black text-2xl md:text-3xl text-ink mt-14 mb-5 scroll-mt-28;
@@ -521,6 +521,27 @@ body {
 }
 .doc a {
   @apply text-uc-deep font-semibold underline underline-offset-2 hover:text-ink;
+}
+.doc ol {
+  @apply list-decimal pl-6 space-y-2 text-[15px] leading-relaxed text-slate-600 mb-4 marker:text-uc-deep marker:font-bold;
+}
+.doc blockquote {
+  @apply border-l-4 border-uc pl-5 my-6 italic text-slate-600;
+}
+.doc img {
+  @apply w-full h-auto rounded-[1.5rem] my-8;
+}
+.doc li > p {
+  @apply mb-0;
+}
+/* Hírek: kisebb címtávolság, mint a tájékoztatóban */
+.news-body h2 {
+  @apply mt-10 mb-4;
+}
+.news-body p,
+.news-body ul,
+.news-body ol {
+  @apply text-base;
 }
 .doc .data-table {
   @apply w-full text-left text-[14px] mb-6 rounded-2xl overflow-hidden;

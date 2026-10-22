@@ -36,6 +36,33 @@ async function toWebp(file: File): Promise<Blob> {
   return blob;
 }
 
+/**
+ * Fájl feltöltése a Storage-ba (kép → WebP, max. 1600 px; videó → MP4, max. 50 MB).
+ * Visszaadja a fájl útvonalát (pl. "images/2026/….webp"). Hiba esetén kivételt dob.
+ */
+export async function uploadMedia(kind: "image" | "video", file: File): Promise<string> {
+  let blob: Blob;
+  let contentType: "image/webp" | "video/mp4";
+  if (kind === "image") {
+    if (!file.type.startsWith("image/")) throw new Error("Ez nem képfájl.");
+    if (file.size > MAX_IMAGE_INPUT_BYTES) throw new Error("A kép túl nagy (max. 25 MB).");
+    blob = await toWebp(file);
+    contentType = "image/webp";
+  } else {
+    if (file.type !== "video/mp4") throw new Error("Csak MP4 videó tölthető fel.");
+    if (file.size > MAX_VIDEO_BYTES) throw new Error("A videó túl nagy (max. 50 MB). Tömörítsd, vagy vágd rövidebbre.");
+    blob = file;
+    contentType = "video/mp4";
+  }
+  const target = await createUploadTarget({ kind, contentType });
+  if (!target.ok) throw new Error(target.error);
+  const { error: upErr } = await supabaseBrowser()
+    .storage.from("undercover")
+    .uploadToSignedUrl(target.path, target.token, blob, { contentType });
+  if (upErr) throw new Error("A feltöltés nem sikerült: " + upErr.message);
+  return target.path;
+}
+
 export default function MediaField({
   kind,
   value,
@@ -59,26 +86,7 @@ export default function MediaField({
     setError(null);
     setBusy(true);
     try {
-      let blob: Blob;
-      let contentType: "image/webp" | "video/mp4";
-      if (kind === "image") {
-        if (!file.type.startsWith("image/")) throw new Error("Ez nem képfájl.");
-        if (file.size > MAX_IMAGE_INPUT_BYTES) throw new Error("A kép túl nagy (max. 25 MB).");
-        blob = await toWebp(file);
-        contentType = "image/webp";
-      } else {
-        if (file.type !== "video/mp4") throw new Error("Csak MP4 videó tölthető fel.");
-        if (file.size > MAX_VIDEO_BYTES) throw new Error("A videó túl nagy (max. 50 MB). Tömörítsd, vagy vágd rövidebbre.");
-        blob = file;
-        contentType = "video/mp4";
-      }
-      const target = await createUploadTarget({ kind, contentType });
-      if (!target.ok) throw new Error(target.error);
-      const { error: upErr } = await supabaseBrowser()
-        .storage.from("undercover")
-        .uploadToSignedUrl(target.path, target.token, blob, { contentType });
-      if (upErr) throw new Error("A feltöltés nem sikerült: " + upErr.message);
-      onChange(target.path);
+      onChange(await uploadMedia(kind, file));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Hiba a feltöltés közben.");
     } finally {
