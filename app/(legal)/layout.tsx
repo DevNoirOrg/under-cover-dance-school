@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 };
 
 /*
-  Külön gyökér-layout, mert a tájékoztató oldal <body>-ja a designban
-  fehér hátterű (a főoldalé bg-ink).
+  Külön gyökér-layout, mert az aloldalak (tájékoztató, hírek) <body>-ja a
+  designban fehér hátterű (a főoldalé bg-ink). Angol párja: app/(legal-en).
 */
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (

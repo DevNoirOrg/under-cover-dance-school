@@ -4,7 +4,10 @@ Next.js (App Router) + TypeScript + Tailwind CSS v4 weboldal admin felülettel.
 A publikus oldal kinézete 1:1 a `md designs/under_cover_18` design alapján készült;
 minden tartalma az adminból szerkeszthető.
 
-- **Publikus oldal:** `/`, `/hirek`, `/hirek/<webcím>`, `/adatkezeles` — statikus, gyorsítótárazott; admin mentéskor azonnal frissül.
+- **Publikus oldal (kétnyelvű):**
+  - magyar: `/`, `/hirek`, `/hirek/<webcím>`, `/adatkezeles`
+  - angol: `/en`, `/en/news`, `/en/news/<webcím>`, `/en/privacy`
+  - statikus, gyorsítótárazott; admin mentéskor azonnal frissül. Részletek: 6. pont.
 - **Admin:** `/admin` (vagy `admin.<domain>`, ha be van állítva az `ADMIN_HOST`).
 - **Adatok:** Supabase (Postgres + Auth + Storage), a közös (MD-vel megosztott) projekt
   `undercover` sémájában.
@@ -28,6 +31,8 @@ minden tartalma az adminból szerkeszthető.
      teljes szöveggel, új jelentkezési mezők (teljes név, telefon, két hozzájárulás), és az
      ügyfél októberi tartalma (hero, rólunk, órarend, hírek, árak, lábléc).
      **Figyelem:** az órarendet, a híreket és az árakat felülírja!
+   - `supabase/2026-10-28-angol.sql` — angol mezők (órarend, hírek, árak) és a jelentkezés
+     nyelve. Újrafuttatható, a meglévő tartalomhoz nem nyúl.
 4. *(Ajánlott)* **Integrations → Cron → Enable**, majd futtasd újra az `undercover.sql`-t.
    Ez állítja be, hogy az 1 évnél régebbi jelentkezések automatikusan törlődjenek
    (ahogy az adatkezelési tájékoztató írja).
@@ -117,8 +122,11 @@ Minden mentés azonnal megjelenik a publikus oldalon.
 ## 5. Felépítés
 
 ```
-app/(site)/            publikus főoldal
-app/(legal)/           adatkezelési tájékoztató, hírek (/hirek, /hirek/[slug])
+app/(site)/            publikus főoldal (magyar)          · app/(site-en)/en   angol főoldal
+app/(legal)/           tájékoztató, hírek (/hirek, …)      · app/(legal-en)/en  /en/news, /en/privacy
+components/pages/      a közös oldalak (mindkét nyelvhez): HomePage, NewsListPage, NewsArticlePage, PrivacyPage
+lib/i18n.ts            nyelvek, címek, a kódban lévő (fix) felületi szövegek magyarul és angolul
+lib/localize.ts        az adminban szerkesztett tartalom angol változatának kiválasztása
 app/(admin)/admin/     admin (belepes + (panel)/…)
 app/actions/           Server Actionök: admin.ts (szerkesztés), auth.ts (belépés),
                        applications.ts (jelentkezés beküldése)
@@ -136,3 +144,25 @@ supabase/              SQL séma + kezdő tartalom
 A form szerveroldalon is validál, rejtett csapdamezővel és IP-nkénti korláttal
 (5 / óra) védekezik a spam ellen, az órák leírását az adatbázisból állítja össze, majd
 ment és (a válasz után) e-mailt küld.
+
+## 6. Kétnyelvű oldal (magyar / angol)
+
+- **Címek:** a magyar oldal a megszokott címeken marad; az angol az `/en` alatt van
+  (`/en`, `/en/news`, `/en/news/<ugyanaz a webcím>`, `/en/privacy`). Automatikus
+  nyelvváltás nincs, az oldal mindig magyarul indul. A keresőknek `hreflang` jelzi a
+  nyelvi párokat; az angol oldalak saját címet és leírást kapnak.
+- **Nyelvválasztó:** „HU · EN” kapcsoló a hero jobb felső sarkában, a lebegő menüben, a
+  láblécben és az aloldalak fejlécében. Az aktuális oldal másik nyelvű párjára visz
+  (egy le nem fordított hírről az angol hírlistára).
+- **Fix szövegek** (menü, gombok, űrlap, hibaüzenetek): `lib/i18n.ts`.
+- **Admin:** minden szerkesztő oldal tetején „Magyar | English” kapcsoló. Az angol fülön a
+  magyar szöveg halványan a mezőben látszik; a még le nem fordított mező sárga, a fül
+  mellett a számuk. **Üres angol mező esetén az angol oldalon a magyar szöveg látszik.**
+  A hero gombfeliratai angolul alapból „Join now” / „Our schedule”.
+- **Hírek:** az angol oldalon csak az angol címmel és szöveggel (vagy rövid szöveggel)
+  rendelkező hírek jelennek meg (az adminban „EN” jelölés).
+- **Adatkezelési tájékoztató:** csak magyarul; az `/en/privacy` oldalon a magyar szöveg
+  látszik, fölötte: „This privacy policy is available in Hungarian only.”
+- **Jelentkezés angolul:** angol űrlap és hibaüzenetek; a jelentkezésbe (admin, export) a
+  válaszok magyar változata kerül, a „Nyelv: angol” jelöléssel. A jelentkező visszaigazoló
+  e-mailje angol; az adminnak szóló értesítő magyar marad.

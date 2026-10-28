@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Room } from "@/lib/content-types";
+import { t, type Locale } from "@/lib/i18n";
 import { SelectionChip, useSelection } from "./selection";
 
 /*
@@ -85,7 +86,8 @@ function SchedulePanel({
   );
 }
 
-export default function Schedule({ rooms }: { rooms: Room[] }) {
+export default function Schedule({ rooms, locale }: { rooms: Room[]; locale: Locale }) {
+  const d = t(locale).schedule;
   const { selected } = useSelection();
   const [activeRoom, setActiveRoom] = useState<Room["id"]>(rooms[0]?.id ?? "");
   const scrollEls = useRef<Record<string, HTMLDivElement | null>>({});
@@ -126,9 +128,9 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
           <div className="text-center">
-            <h2 className="font-title font-black text-5xl md:text-6xl text-white">Órarend</h2>
+            <h2 className="font-title font-black text-5xl md:text-6xl text-white">{d.title}</h2>
             <p className="text-white/60 mt-2 font-medium uppercase tracking-widest text-sm">
-              Válaszd ki az órákat — akár többet is
+              {d.lead}
             </p>
           </div>
           {/* Terem-váltó */}
@@ -166,7 +168,7 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
 
         {/* a mobilos „csúsztasd” jelzés csak akkor kell, ha van több oszlopos terem */}
         <p hidden={!rooms.some((r) => r.columns.length > 1)} className="md:hidden text-center text-white/50 text-[10px] font-extrabold uppercase tracking-widest mt-4">
-          ← Csúsztasd oldalra a többi napért →
+          {d.swipe}
         </p>
 
         {/* ---- Kiválasztás-összegző ---- */}
@@ -176,14 +178,14 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
         >
           <div className="flex-1 min-w-0">
             <p className="font-title font-black text-white text-xl md:text-2xl">
-              {n === 0 ? "Még nem választottál órát" : `${n} óra kiválasztva`}
+              {n === 0 ? d.noneTitle : d.selected(n)}
             </p>
             <p className="text-white/60 text-[11px] font-extrabold uppercase tracking-widest mt-2">
-              {n === 0 ? "Koppints egy órára az órarendben" : "Többet is választhatsz, vagy távolítsd el a kijelölést"}
+              {n === 0 ? d.noneHint : d.moreHint}
             </p>
             <div className="flex flex-wrap gap-2 mt-4">
               {selected.map((c) => (
-                <SelectionChip key={c.id} item={c} />
+                <SelectionChip key={c.id} item={c} locale={locale} />
               ))}
             </div>
           </div>
@@ -191,7 +193,7 @@ export default function Schedule({ rooms }: { rooms: Room[] }) {
             href="#jelentkezes"
             className="shrink-0 text-center bg-white text-ink px-8 py-5 rounded-2xl font-extrabold uppercase tracking-[0.2em] text-xs shadow-xl hover:bg-uc-pale transition-colors"
           >
-            Tovább a jelentkezéshez
+            {d.toSignup}
           </a>
         </div>
       </div>

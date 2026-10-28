@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FormOptions } from "@/lib/content-types";
 import { PARENT_REQUIRED_UNDER_AGE } from "@/lib/form-rules";
+import { paths, t, type Dictionary, type Locale } from "@/lib/i18n";
 import { submitApplication } from "@/app/actions/applications";
 import { SelectionChip, useSelection } from "./selection";
 
@@ -12,7 +12,7 @@ import { SelectionChip, useSelection } from "./selection";
    - a kiválasztott órák az órarendből jönnek (chipek a form tetején)
    - 16 év alatt a szülő neve + e-mail címe kötelezővé válik
    - a tánctapasztalat nem kötelező; két külön kötelező jelölőnégyzet
-   - magyar nyelvű, mezőnkénti validáció; egy mező csak akkor piros, ha
+   - az oldal nyelvén (magyar / angol) mezőnkénti validáció; egy mező csak akkor piros, ha
      a látogató már hozzányúlt, vagy megpróbálta beküldeni
    - az első sikertelen beküldés után a hibák élőben frissülnek
    - beküldés: app/actions/applications.ts (mentés + e-mail értesítés)
@@ -51,10 +51,8 @@ const REQUIRED_ORDER: FieldKey[] = ["nev", "email", "telefon", "szuletes", "szul
 const CONSENTS = ["tajekoztato", "adatkezeles"] as const;
 type ConsentKey = (typeof CONSENTS)[number];
 type ErrorKey = FieldKey | ConsentKey;
-const CONSENT_ERRORS: Record<ConsentKey, string> = {
-  tajekoztato: "A jelentkezéshez el kell fogadnod az Adatkezelési tájékoztatót.",
-  adatkezeles: "A jelentkezéshez hozzá kell járulnod az adataid kezeléséhez.",
-};
+type SignupText = Dictionary["signup"];
+const consentError = (s: SignupText, c: ConsentKey) => (c === "tajekoztato" ? s.consentPrivacyError : s.consentDataError);
 
 const fid = (k: ErrorKey) => `f-${k}`;
 
@@ -69,28 +67,22 @@ function ageFrom(value: string): number | null {
   return a;
 }
 
-function fieldMessage(k: FieldKey, v: string): string | null {
+function fieldMessage(s: SignupText, k: FieldKey, v: string): string | null {
   const value = v.trim();
-  if (!value) return "Ezt a mezőt kötelező kitölteni.";
-  if ((k === "email" || k === "szulo_email") && !EMAIL_RE.test(value)) {
-    return "Adj meg egy érvényes e-mail címet.";
-  }
-  if (k === "telefon" && (!PHONE_RE.test(value) || value.replace(/\D/g, "").length < 7)) {
-    return "Adj meg egy érvényes telefonszámot.";
-  }
+  if (!value) return s.required;
+  if ((k === "email" || k === "szulo_email") && !EMAIL_RE.test(value)) return s.invalidEmail;
+  if (k === "telefon" && (!PHONE_RE.test(value) || value.replace(/\D/g, "").length < 7)) return s.invalidPhone;
   if (k === "szuletes") {
     const a = ageFrom(value);
-    if (a === null) return "Adj meg egy érvényes dátumot.";
-    if (a < 0) return "A dátum a jövőben van.";
-    if (a > 100) return "Ellenőrizd a megadott dátumot.";
+    if (a === null) return s.invalidDate;
+    if (a < 0) return s.futureDate;
+    if (a > 100) return s.checkDate;
   }
   return null;
 }
 
-function summaryText(nProblems: number) {
-  return nProblems === 1
-    ? "Egy mező még hiányzik vagy hibás."
-    : nProblems + " mező még hiányzik vagy hibás. A pirossal jelölt helyeket javítsd!";
+function summaryText(s: SignupText, nProblems: number) {
+  return nProblems === 1 ? s.summaryOne : s.summaryMany(nProblems);
 }
 
 const labelClass = "text-[11px] font-extrabold uppercase tracking-widest text-slate-400 block ml-4";
@@ -109,8 +101,17 @@ function FieldError({ message, className = "field-error" }: { message?: string; 
   );
 }
 
-export default function Signup({ formOptions }: { formOptions: FormOptions }) {
+export default function Signup({
+  experienceOptions,
+  locale,
+}: {
+  /** A „Táncoltál már korábban?” opciói: value = magyar (ez kerül a jelentkezésbe), label = az oldal nyelvén. */
+  experienceOptions: { value: string; label: string }[];
+  locale: Locale;
+}) {
   const { selected, clear } = useSelection();
+  const d = t(locale);
+  const s = d.signup;
 
   const [values, setValues] = useState<Values>(emptyValues);
   const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({ tajekoztato: false, adatkezeles: false });
@@ -135,10 +136,10 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
   const invalidFields: Partial<Record<ErrorKey, string>> = {};
   for (const k of REQUIRED_ORDER) {
     if ((k === "szulo_nev" || k === "szulo_email") && !minor) continue;
-    const msg = fieldMessage(k, values[k]);
+    const msg = fieldMessage(s, k, values[k]);
     if (msg) invalidFields[k] = msg;
   }
-  for (const c of CONSENTS) if (!consents[c]) invalidFields[c] = CONSENT_ERRORS[c];
+  for (const c of CONSENTS) if (!consents[c]) invalidFields[c] = consentError(s, c);
   const noSelection = selected.length === 0;
 
   // Hibát csak az első beküldési kísérlet után mutatunk; utána egy mező akkor
@@ -154,7 +155,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
   const invalidCount = Object.keys(invalidFields).length + (noSelection ? 1 : 0);
   const shownCount = Object.keys(errors).length + (selectionError ? 1 : 0);
   const summary =
-    submitTried && invalidCount > 0 ? summaryText(shownCount || invalidCount) : serverError;
+    submitTried && invalidCount > 0 ? summaryText(s, shownCount || invalidCount) : serverError;
 
   useEffect(() => {
     if (thanksRows) thanksRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -200,9 +201,10 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
         adatkezeles: true,
         classIds: selected.map((c) => c.id),
         website,
+        lang: locale,
       });
     } catch {
-      result = { ok: false as const, error: "Nem sikerült elküldeni a jelentkezést. Kérjük, próbáld újra pár perc múlva." };
+      result = { ok: false as const, error: s.networkError };
     } finally {
       setPending(false);
     }
@@ -212,16 +214,19 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
     }
 
     const data = { ...values, valasztott_orak: selected.map((c) => c.full) };
+    const r = d.rows;
     const rows: [string, React.ReactNode][] = [
-      ["Név", data.nev],
-      ["E-mail", data.email],
-      ["Telefon", data.telefon],
-      ["Születési dátum", data.szuletes],
+      [r.name, data.nev],
+      [r.email, data.email],
+      [r.phone, data.telefon],
+      [r.birth, data.szuletes],
     ];
-    if (minor) rows.push(["Szülő", data.szulo_nev + " · " + data.szulo_email]);
-    if (data.tapasztalat) rows.push(["Tánctapasztalat", data.tapasztalat]);
+    if (minor) rows.push([r.parent, data.szulo_nev + " · " + data.szulo_email]);
+    if (data.tapasztalat) {
+      rows.push([r.experience, experienceOptions.find((o) => o.value === data.tapasztalat)?.label ?? data.tapasztalat]);
+    }
     rows.push([
-      "Órák",
+      r.classes,
       data.valasztott_orak.map((o, i) => (
         <span key={o}>
           {i > 0 && <br />}
@@ -229,7 +234,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
         </span>
       )),
     ]);
-    if (data.megjegyzes.trim()) rows.push(["Megjegyzés", data.megjegyzes]);
+    if (data.megjegyzes.trim()) rows.push([r.comments, data.megjegyzes]);
     setThanksRows(rows);
   }
 
@@ -263,7 +268,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
       <div className="relative z-10 max-w-3xl mx-auto bg-white p-8 sm:p-10 md:p-14 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] border border-slate-100 overflow-visible mt-16 md:mt-20">
         <div className="absolute top-0 left-1/2 -mt-2 -translate-x-1/2 -translate-y-1/2 w-full px-6 pointer-events-none select-none text-center">
           <span className="outlined-title font-title font-black text-ink text-5xl md:text-7xl whitespace-nowrap">
-            Jelentkezés
+            {s.title}
           </span>
         </div>
 
@@ -274,27 +279,27 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             className={`rounded-[28px] bg-uc-pale/70 border-2 border-uc/20 p-6${selectionError ? " has-error" : ""}`}
           >
             <div className="flex items-baseline justify-between gap-4">
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-uc-deep">Választott óráid</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-uc-deep/60">{n} óra</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-uc-deep">{s.selectedClasses}</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-uc-deep/60">{s.classCount(n)}</span>
             </div>
             <div className="flex flex-wrap gap-2 mt-4">
               {selected.map((c) => (
-                <SelectionChip key={c.id} item={c} light />
+                <SelectionChip key={c.id} item={c} light locale={locale} />
               ))}
             </div>
             <FieldError
               className="field-error !ml-0 mt-3"
-              message={selectionError ? "Válassz legalább egy órát az órarendből!" : undefined}
+              message={selectionError ? s.pickOne : undefined}
             />
             <div className="mt-3" hidden={n > 0}>
               <p className="text-sm font-semibold text-slate-500">
-                Még nincs kiválasztott órád — legalább egyet válassz az órarendből.
+                {s.noneYet}
               </p>
               <a
                 href="#orarend"
                 className="inline-block mt-3 bg-uc-deep text-white px-5 py-3 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-ink transition-colors"
               >
-                Vissza az órarendhez
+                {s.backToSchedule}
               </a>
             </div>
           </div>
@@ -302,14 +307,14 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className={labelClass} htmlFor="f-nev">
-                Teljes név (Táncos) <Req />
+                {s.name} <Req />
               </label>
               <input
                 type="text"
                 id="f-nev"
                 name="nev"
                 autoComplete="name"
-                placeholder="Kovács Emma"
+                placeholder={s.namePlaceholder}
                 className={cls("nev")}
                 value={values.nev}
                 onChange={set("nev")}
@@ -318,14 +323,14 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             </div>
             <div className="space-y-3">
               <label className={labelClass} htmlFor="f-email">
-                E-mail cím (Táncos) <Req />
+                {s.email} <Req />
               </label>
               <input
                 type="email"
                 id="f-email"
                 name="email"
                 autoComplete="email"
-                placeholder="hello@valami.hu"
+                placeholder={s.emailPlaceholder}
                 className={cls("email")}
                 value={values.email}
                 onChange={set("email")}
@@ -337,7 +342,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className={labelClass} htmlFor="f-telefon">
-                Telefonszám <Req />
+                {s.phone} <Req />
               </label>
               <input
                 type="tel"
@@ -355,7 +360,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
             <div className="space-y-3">
               <label className={labelClass} htmlFor="f-szuletes">
-                Mikor születtél? (Táncos) <Req />
+                {s.birth} <Req />
               </label>
               <input
                 type="date"
@@ -373,19 +378,19 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
           <div id="szulo-blokk" className="parent-block space-y-6" hidden={!minor}>
             <div className="rounded-2xl bg-uc-pale/70 border-2 border-uc/20 px-6 py-5">
               <p className="text-sm font-bold text-uc-deep">
-                16 év alatti vagy — kérjük, add meg a szülőd teljes nevét és e-mail címét!
+                {s.parentNotice(PARENT_REQUIRED_UNDER_AGE)}
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <label className={labelClass} htmlFor="f-szulo_nev">
-                  Szülő teljes neve <Req />
+                  {s.parentName} <Req />
                 </label>
                 <input
                   type="text"
                   id="f-szulo_nev"
                   name="szulo_nev"
-                  placeholder="Kovács Ákos"
+                  placeholder={s.parentNamePlaceholder}
                   className={cls("szulo_nev")}
                   value={values.szulo_nev}
                   onChange={set("szulo_nev")}
@@ -394,13 +399,13 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
               </div>
               <div className="space-y-3">
                 <label className={labelClass} htmlFor="f-szulo_email">
-                  Szülő e-mail címe <Req />
+                  {s.parentEmail} <Req />
                 </label>
                 <input
                   type="email"
                   id="f-szulo_email"
                   name="szulo_email"
-                  placeholder="szulo@valami.hu"
+                  placeholder={s.parentEmailPlaceholder}
                   className={cls("szulo_email")}
                   value={values.szulo_email}
                   onChange={set("szulo_email")}
@@ -412,7 +417,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
           <div className="space-y-3">
             <label className={labelClass} htmlFor="f-tapasztalat">
-              Táncoltál már korábban?
+              {s.experience}
             </label>
             <select
               id="f-tapasztalat"
@@ -421,10 +426,10 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
               value={values.tapasztalat}
               onChange={set("tapasztalat")}
             >
-              <option value="">Válassz…</option>
-              {formOptions.experience.map((o) => (
-                <option key={o} value={o}>
-                  {o}
+              <option value="">{s.choose}</option>
+              {experienceOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </select>
@@ -432,13 +437,13 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
           <div className="space-y-3">
             <label className={labelClass} htmlFor="f-megjegyzes">
-              Megjegyzés
+              {s.comments}
             </label>
             <textarea
               id="f-megjegyzes"
               name="megjegyzes"
               rows={4}
-              placeholder="Bármi, amit tudnunk érdemes…"
+              placeholder={s.commentsPlaceholder}
               className={`${inputClass} resize-none`}
               value={values.megjegyzes}
               onChange={set("megjegyzes")}
@@ -466,19 +471,19 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
                   <span className="text-sm font-semibold leading-relaxed text-slate-600">
                     {c === "tajekoztato" ? (
                       <>
-                        Elolvastam és elfogadom az{" "}
+                        {s.consentPrivacyBefore}{" "}
                         <a
-                          href="/adatkezeles"
+                          href={paths[locale].privacy}
                           target="_blank"
                           rel="noopener"
                           className="font-bold text-uc-deep underline underline-offset-2 hover:text-ink"
                         >
-                          Adatkezelési tájékoztatóban
-                        </a>{" "}
-                        foglaltakat.
+                          {s.consentPrivacyLink}
+                        </a>
+                        {s.consentPrivacyAfter ? ` ${s.consentPrivacyAfter}` : "."}
                       </>
                     ) : (
-                      "Hozzájárulok a fenti adataim Adatkezelő által történő kezeléséhez."
+                      s.consentData
                     )}{" "}
                     <Req />
                   </span>
@@ -497,7 +502,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
 
           {/* Spamvédelmi csapdamező — képernyőn kívül, emberek nem látják. */}
           <div aria-hidden="true" className="absolute -left-[10000px] top-auto w-px h-px overflow-hidden">
-            <label htmlFor="f-website">Weboldal</label>
+            <label htmlFor="f-website">{s.honeypot}</label>
             <input
               type="text"
               id="f-website"
@@ -515,10 +520,10 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             aria-busy={pending}
             className="w-full bg-ink text-white py-6 rounded-2xl font-extrabold uppercase tracking-[0.3em] shadow-xl hover:bg-uc-deep transition-all mt-4 disabled:opacity-60 disabled:cursor-wait"
           >
-            {pending ? "Küldés…" : "Jelentkezem"}
+            {pending ? s.sending : s.submit}
           </button>
           <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            <Req /> kötelező mező
+            <Req /> {s.requiredNote}
           </p>
         </form>
 
@@ -527,8 +532,8 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
           <div className="mx-auto w-20 h-20 rounded-full bg-uc-pale flex items-center justify-center">
             <span className="thanks-tick" aria-hidden="true"></span>
           </div>
-          <h3 className="font-title font-black text-3xl text-ink mt-6">Köszönjük a jelentkezést!</h3>
-          <p className="text-sm font-semibold text-slate-500 mt-3">Hamarosan keresünk a megadott e-mail címen.</p>
+          <h3 className="font-title font-black text-3xl text-ink mt-6">{s.thanksTitle}</h3>
+          <p className="text-sm font-semibold text-slate-500 mt-3">{s.thanksText}</p>
           <div className="text-left rounded-[28px] bg-slate-50 p-6 mt-8 space-y-2">
             {thanksRows?.map(([k, v]) => (
               <div key={k} className="flex flex-col sm:flex-row sm:gap-4">
@@ -544,7 +549,7 @@ export default function Signup({ formOptions }: { formOptions: FormOptions }) {
             onClick={restart}
             className="mt-8 text-[10px] font-extrabold uppercase tracking-widest text-uc-deep hover:text-ink transition-colors"
           >
-            Új jelentkezés indítása
+            {s.restart}
           </button>
         </div>
       </div>

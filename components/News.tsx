@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { NewsItem } from "@/lib/content-types";
 import { mediaUrl } from "@/lib/format";
+import { paths, t, type Locale } from "@/lib/i18n";
 
 /*
   HÍREK — elforgatott fotó-kártyák cellux-csíkkal. A forgatás / eltolás
@@ -14,13 +15,21 @@ const variants = [
 ];
 
 /** Hírkártyák rácsa (főoldal és a /hirek oldal). */
-export function NewsGrid({ news, className = "grid md:grid-cols-3 gap-8" }: { news: NewsItem[]; className?: string }) {
+export function NewsGrid({
+  news,
+  locale,
+  className = "grid md:grid-cols-3 gap-8",
+}: {
+  news: NewsItem[];
+  locale: Locale;
+  className?: string;
+}) {
   return (
     <div className={className}>
       {news.map((item, i) => {
         const v = variants[i % variants.length];
         return (
-          <Link key={item.id} href={`/hirek/${item.slug}`} className={`block ${v.wrapper}`}>
+          <Link key={item.id} href={paths[locale].newsItem(item.slug)} className={`block ${v.wrapper}`}>
             <div
               className={`relative bg-white p-4 rounded-[1.5rem] shadow-lg ${v.card} transition-transform duration-300`}
             >
@@ -46,7 +55,7 @@ export function NewsGrid({ news, className = "grid md:grid-cols-3 gap-8" }: { ne
               <h3 className="font-bold text-lg mt-1 mb-2 leading-tight">{item.title}</h3>
               <p className="text-xs leading-relaxed text-ink/60">{item.excerpt}</p>
               <span className="inline-block mt-3 text-[10px] font-extrabold uppercase tracking-widest text-uc-deep group-hover:text-ink transition-colors">
-                Tovább olvasom →
+                {t(locale).news.readMore}
               </span>
             </div>
           </Link>
@@ -56,23 +65,28 @@ export function NewsGrid({ news, className = "grid md:grid-cols-3 gap-8" }: { ne
   );
 }
 
-export default function News({ news }: { news: NewsItem[] }) {
+export default function News({ news, locale }: { news: NewsItem[]; locale: Locale }) {
+  const d = t(locale).news;
   // a design 3 kártyára készült: a főoldalon a legfrissebb 3 hír látszik
   return (
     <section id="hirek" className="dot-paper py-24 px-6 md:px-10 bg-white scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-12">
-          <h2 className="font-title font-black text-4xl text-ink">Hírek</h2>
+          <h2 className="font-title font-black text-4xl text-ink">{d.title}</h2>
           <div className="h-[2px] flex-grow bg-ink/5"></div>
           <Link
-            href="/hirek"
+            href={paths[locale].news}
             className="shrink-0 text-[11px] font-extrabold uppercase tracking-widest text-uc-deep hover:text-ink transition-colors"
           >
-            Összes hír →
+            {d.all}
           </Link>
         </div>
 
-        <NewsGrid news={news} />
+        {news.length > 0 ? (
+          <NewsGrid news={news} locale={locale} />
+        ) : (
+          <p className="text-slate-500 font-semibold">{d.empty}</p>
+        )}
       </div>
     </section>
   );

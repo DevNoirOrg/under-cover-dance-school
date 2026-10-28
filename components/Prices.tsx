@@ -1,4 +1,5 @@
 import type { PriceItem, PriceNote } from "@/lib/content-types";
+import { t, type Locale } from "@/lib/i18n";
 
 /* ÁRAINK — lila kártya a jelentkezés előtt, két oszlopos árlistával. */
 
@@ -16,7 +17,7 @@ function PriceRow({ item }: { item: PriceItem }) {
   );
 }
 
-export default function Prices({ prices, notes }: { prices: PriceItem[]; notes: PriceNote[] }) {
+export default function Prices({ prices, notes, locale }: { prices: PriceItem[]; notes: PriceNote[]; locale: Locale }) {
   const half = Math.ceil(prices.length / 2);
   const left = prices.slice(0, half);
   const right = prices.slice(half);
@@ -26,7 +27,7 @@ export default function Prices({ prices, notes }: { prices: PriceItem[]; notes: 
       <div className="relative max-w-5xl mx-auto bg-uc rounded-[3rem] px-7 sm:px-10 md:px-14 pt-16 md:pt-20 pb-8 md:pb-12 shadow-[0_40px_80px_-30px_rgba(20,19,22,0.45)]">
         <div className="absolute top-0 left-1/2 -mt-2 -translate-x-1/2 -translate-y-1/2 w-full px-6 pointer-events-none select-none text-center">
           <span className="outlined-title outlined-title--uc font-title font-black text-ink text-5xl md:text-7xl whitespace-nowrap">
-            Áraink
+            {t(locale).prices.title}
           </span>
         </div>
 

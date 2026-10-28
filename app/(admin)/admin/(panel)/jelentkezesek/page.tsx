@@ -65,6 +65,7 @@ async function ApplicationsPageContent({ searchParams }: { searchParams: Promise
                       <span className="block truncate font-bold">
                         {a.nev}
                         {a.szuloNev && <span className="ml-2 text-[10px] font-extrabold uppercase tracking-widest text-uc-deep">16 év alatti</span>}
+                        {a.lang === "en" && <span className="ml-2 text-[10px] font-extrabold uppercase tracking-widest text-sky-700">Angol</span>}
                       </span>
                       <span className="block truncate text-xs text-slate-500">{a.classes.join(" · ")}</span>
                     </span>

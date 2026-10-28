@@ -20,7 +20,9 @@ import { supabaseServer } from "@/lib/supabase/server";
     4) azonnal frissíti a publikus oldalt (updateTag).
 */
 
-export type ActionResult = { ok: true; id?: string; slug?: string; bodyHtml?: string } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; id?: string; slug?: string; bodyHtml?: string; bodyHtmlEn?: string }
+  | { ok: false; error: string };
 
 const fail = (error: string): ActionResult => ({ ok: false, error });
 
@@ -42,6 +44,8 @@ async function run(fn: (email: string) => Promise<ActionResult | void>): Promise
 const text = (max = 500, label = "Mező") =>
   z.string().trim().max(max, `${label}: legfeljebb ${max} karakter.`);
 const required = (max = 500, label = "Mező") => text(max, label).min(1, `${label}: nem lehet üres.`);
+/** Angol fordítás (nem kötelező; üresen az angol oldalon a magyar látszik). */
+const en = (max = 500, label = "Mező") => text(max, `${label} (angol)`).optional().default("");
 const mediaPath = z
   .string()
   .regex(/^(\/[\w./-]+|(images|videos)\/[\w./-]+)$/, "Érvénytelen fájl.")
@@ -86,6 +90,16 @@ const heroSchema = z.object({
   secondaryCtaLabel: required(40, "Második gomb felirata"),
   videoPath: mediaPath.nullable(),
   videoPosterPath: mediaPath.nullable(),
+  en: z
+    .object({
+      badge: en(40, "Jelvény"),
+      leadBefore: en(500, "Szöveg"),
+      leadHighlight: en(120, "Kiemelt rész"),
+      leadAfter: en(300, "Szöveg vége"),
+      primaryCtaLabel: en(40, "Fő gomb felirata"),
+      secondaryCtaLabel: en(40, "Második gomb felirata"),
+    })
+    .prefault({}),
 });
 
 export async function saveHero(input: z.input<typeof heroSchema>) {
@@ -109,10 +123,25 @@ const aboutSchema = z.object({
   paragraph: text(5000, "Bekezdések"),
   highlight: text(500, "Kiemelt bekezdés"),
   stats: z
-    .array(z.object({ value: required(12, "Szám"), label: required(30, "Felirat") }))
+    .array(
+      z.object({
+        value: required(12, "Szám"),
+        label: required(30, "Felirat"),
+        en: z.object({ value: en(12, "Szám"), label: en(30, "Felirat") }).prefault({}),
+      }),
+    )
     .max(4, "Legfeljebb 4 statisztika lehet."),
   imagePath: mediaPath,
   imageAlt: text(200, "Kép leírása"),
+  en: z
+    .object({
+      titleLine1: en(80, "Cím 1. sor"),
+      titleLine2: en(80, "Cím 2. sor"),
+      paragraph: en(5000, "Bekezdések"),
+      highlight: en(500, "Kiemelt bekezdés"),
+      imageAlt: en(200, "Kép leírása"),
+    })
+    .prefault({}),
 });
 
 export async function saveAbout(input: z.input<typeof aboutSchema>) {
@@ -136,7 +165,15 @@ const footerSchema = z.object({
     .max(120)
     .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), "Érvénytelen e-mail cím."),
   phone: text(40, "Telefonszám"),
-  locations: z.array(z.object({ text: required(160, "Helyszín"), note: text(200, "Megjegyzés") })).max(6),
+  locations: z
+    .array(
+      z.object({
+        text: required(160, "Helyszín"),
+        note: text(200, "Megjegyzés"),
+        en: z.object({ text: en(160, "Helyszín"), note: en(200, "Megjegyzés") }).prefault({}),
+      }),
+    )
+    .max(6),
   socials: z
     .array(
       z.object({
@@ -153,6 +190,7 @@ const footerSchema = z.object({
     .max(6),
   copyright: text(120, "Copyright sor"),
   tagline: text(120, "Szlogen"),
+  en: z.object({ copyright: en(120, "Copyright sor"), tagline: en(120, "Szlogen") }).prefault({}),
 });
 
 export async function saveFooter(input: z.input<typeof footerSchema>) {
@@ -169,11 +207,17 @@ export async function saveFooter(input: z.input<typeof footerSchema>) {
 // ---------------------------------------------------------------------
 const formOptionsSchema = z.object({
   experience: z.array(required(80, "Opció")).min(1, "Legalább egy opció kell.").max(12),
+  /** Az opciók angol felirata ugyanabban a sorrendben (a jelentkezésbe mindig a magyar kerül). */
+  experienceEn: z.array(text(80, "Opció (angol)")).max(12).optional().default([]),
 });
 
 export async function saveFormOptions(input: z.input<typeof formOptionsSchema>) {
   return run(async (email) => {
-    const value = formOptionsSchema.parse(input);
+    const parsed = formOptionsSchema.parse(input);
+    const value = {
+      experience: parsed.experience,
+      experienceEn: parsed.experience.map((_, i) => parsed.experienceEn[i] ?? ""),
+    };
     await saveSetting("form_options", value, email);
     await touch("form_options", email);
     updateTag(CONTENT_TAG);
@@ -203,10 +247,20 @@ const pricesSchema = z.object({
         name: required(80, "Megnevezés"),
         price: required(30, "Ár"),
         note: z.enum(["", "*", "**"]),
+        nameEn: en(80, "Megnevezés"),
+        priceEn: en(30, "Ár"),
       }),
     )
     .max(40),
-  notes: z.array(z.object({ mark: z.enum(["", "*", "**"]), text: required(300, "Megjegyzés") })).max(6),
+  notes: z
+    .array(
+      z.object({
+        mark: z.enum(["", "*", "**"]),
+        text: required(300, "Megjegyzés"),
+        en: z.object({ text: en(300, "Megjegyzés") }).prefault({}),
+      }),
+    )
+    .max(6),
 });
 
 export async function savePrices(input: z.input<typeof pricesSchema>) {
@@ -215,8 +269,8 @@ export async function savePrices(input: z.input<typeof pricesSchema>) {
     await db().begin(async (tx) => {
       await tx`delete from undercover.prices`;
       for (const [i, p] of items.entries()) {
-        await tx`insert into undercover.prices (id, name, price, note, sort)
-                 values (${p.id ?? randomUUID()}, ${p.name}, ${p.price}, ${p.note}, ${i})`;
+        await tx`insert into undercover.prices (id, name, price, note, sort, name_en, price_en)
+                 values (${p.id ?? randomUUID()}, ${p.name}, ${p.price}, ${p.note}, ${i}, ${p.nameEn}, ${p.priceEn})`;
       }
     });
     await saveSetting("price_notes", { notes }, email);
@@ -233,13 +287,19 @@ const classSchema = z.object({
   title: required(80, "Óra címe"),
   subtitle: text(80, "Alcím"),
   chip: required(60, "Rövid felirat"),
+  titleEn: en(80, "Óra címe"),
+  subtitleEn: en(80, "Alcím"),
+  chipEn: en(60, "Rövid felirat"),
 });
 const roomSchema = z.object({
   id: z.string().uuid().optional(),
   name: required(40, "Terem neve"),
   shortName: required(20, "Terem rövid neve"),
+  nameEn: en(40, "Terem neve"),
+  shortNameEn: en(20, "Terem rövid neve"),
   minHeightPx: z.number().int().min(120).max(600),
   headings: z.array(required(40, "Oszlopcím")).min(1, "Legalább egy oszlop kell.").max(3, "Legfeljebb 3 oszlop lehet."),
+  headingsEn: z.array(text(40, "Oszlopcím (angol)")).max(3).optional().default([]),
   columns: z.array(z.array(classSchema).max(20)).min(1).max(3),
 }).refine((r) => r.headings.length === r.columns.length, "Az oszlopok száma nem egyezik.");
 const scheduleSchema = z.object({ rooms: z.array(roomSchema).min(1, "Legalább egy terem kell.").max(6) });
@@ -271,16 +331,20 @@ export async function saveSchedule(input: z.input<typeof scheduleSchema>) {
         const id = room.id ?? randomUUID();
         // ideiglenes slug, hogy két terem cseréjekor se ütközzön az egyedi index
         await tx`
-          insert into undercover.rooms (id, slug, name, short_name, column_headings, min_height_px, sort, updated_at, updated_by)
-          values (${id}, ${"tmp-" + id}, ${room.name}, ${room.shortName}, ${room.headings}, ${room.minHeightPx}, ${sort}, now(), ${email})
+          insert into undercover.rooms (id, slug, name, short_name, column_headings, min_height_px, sort, updated_at, updated_by,
+            name_en, short_name_en, column_headings_en)
+          values (${id}, ${"tmp-" + id}, ${room.name}, ${room.shortName}, ${room.headings}, ${room.minHeightPx}, ${sort}, now(), ${email},
+            ${room.nameEn}, ${room.shortNameEn}, ${room.headings.map((_, i) => room.headingsEn[i] ?? "")})
           on conflict (id) do update set slug = excluded.slug, name = excluded.name, short_name = excluded.short_name,
             column_headings = excluded.column_headings, min_height_px = excluded.min_height_px,
-            sort = excluded.sort, updated_at = now(), updated_by = excluded.updated_by`;
+            sort = excluded.sort, updated_at = now(), updated_by = excluded.updated_by,
+            name_en = excluded.name_en, short_name_en = excluded.short_name_en, column_headings_en = excluded.column_headings_en`;
         await tx`delete from undercover.classes where room_id = ${id}`;
         for (const [col, classes] of room.columns.entries()) {
           for (const [i, c] of classes.entries()) {
-            await tx`insert into undercover.classes (id, room_id, col, sort, title, subtitle, chip)
-                     values (${c.id ?? randomUUID()}, ${id}, ${col}, ${i}, ${c.title}, ${c.subtitle}, ${c.chip})`;
+            await tx`insert into undercover.classes (id, room_id, col, sort, title, subtitle, chip, title_en, subtitle_en, chip_en)
+                     values (${c.id ?? randomUUID()}, ${id}, ${col}, ${i}, ${c.title}, ${c.subtitle}, ${c.chip},
+                       ${c.titleEn}, ${c.subtitleEn}, ${c.chipEn})`;
           }
         }
         room.id = id;
@@ -312,6 +376,12 @@ const newsSchema = z.object({
   imagePath: mediaPath.nullable(),
   imageAlt: text(200, "Kép leírása"),
   placeholderLabel: text(30, "Helyőrző felirat"),
+  // angol változat: a hír csak akkor jelenik meg az angol oldalon, ha van angol címe és szövege
+  titleEn: en(160, "Cím"),
+  excerptEn: en(400, "Rövid szöveg"),
+  bodyHtmlEn: z.string().max(200_000, "A hír angol szövege túl hosszú.").optional().default(""),
+  imageAltEn: en(200, "Kép leírása"),
+  placeholderLabelEn: en(30, "Helyőrző felirat"),
 });
 
 /** Egyedi webcím: a megadott vagy a címből képzett slug, ütközés esetén -2, -3… */
@@ -330,42 +400,47 @@ export async function saveNews(input: z.input<typeof newsSchema>) {
   return run(async (email) => {
     const n = newsSchema.parse(input);
     const body = sanitizeNewsHtml(n.bodyHtml);
+    const bodyEn = n.bodyHtmlEn.trim() ? sanitizeNewsHtml(n.bodyHtmlEn) : "";
     let oldImage: string | null = null;
     let oldBody = "";
     let id = n.id;
     const slug = await uniqueNewsSlug(n.slug, n.title, id);
     if (id) {
-      const [old] = await db()<{ image_path: string | null; body_html: string }[]>`
-        select image_path, body_html from undercover.news where id = ${id}`;
+      const [old] = await db()<{ image_path: string | null; body_html: string; body_html_en: string }[]>`
+        select image_path, body_html, body_html_en from undercover.news where id = ${id}`;
       if (!old) return fail("Ez a hír időközben törölve lett.");
       oldImage = old.image_path;
-      oldBody = old.body_html;
+      oldBody = old.body_html + old.body_html_en;
       await db()`update undercover.news set published_on = ${n.publishedOn}, slug = ${slug}, title = ${n.title},
         excerpt = ${n.excerpt}, body_html = ${body}, image_path = ${n.imagePath}, image_alt = ${n.imageAlt || null},
-        placeholder_label = ${n.placeholderLabel}, updated_at = now(), updated_by = ${email} where id = ${id}`;
+        placeholder_label = ${n.placeholderLabel}, title_en = ${n.titleEn}, excerpt_en = ${n.excerptEn},
+        body_html_en = ${bodyEn}, image_alt_en = ${n.imageAltEn}, placeholder_label_en = ${n.placeholderLabelEn},
+        updated_at = now(), updated_by = ${email} where id = ${id}`;
     } else {
       id = randomUUID();
       await db()`insert into undercover.news
-        (id, published_on, slug, title, excerpt, body_html, image_path, image_alt, placeholder_label, updated_by)
+        (id, published_on, slug, title, excerpt, body_html, image_path, image_alt, placeholder_label, updated_by,
+         title_en, excerpt_en, body_html_en, image_alt_en, placeholder_label_en)
         values (${id}, ${n.publishedOn}, ${slug}, ${n.title}, ${n.excerpt}, ${body}, ${n.imagePath},
-          ${n.imageAlt || null}, ${n.placeholderLabel}, ${email})`;
+          ${n.imageAlt || null}, ${n.placeholderLabel}, ${email},
+          ${n.titleEn}, ${n.excerptEn}, ${bodyEn}, ${n.imageAltEn}, ${n.placeholderLabelEn})`;
     }
     if (oldImage && oldImage !== n.imagePath) await removeMedia(oldImage);
-    // a szövegből kikerült (feltöltött) képek törlése
-    const kept = new Set(bodyMediaPaths(body));
+    // a szövegből (magyar vagy angol) kikerült feltöltött képek törlése
+    const kept = new Set([...bodyMediaPaths(body), ...bodyMediaPaths(bodyEn)]);
     for (const p of bodyMediaPaths(oldBody)) if (!kept.has(p)) await removeMedia(p);
     await touch("news", email);
     updateTag(CONTENT_TAG);
-    return { ok: true, id, slug, bodyHtml: body };
+    return { ok: true, id, slug, bodyHtml: body, bodyHtmlEn: bodyEn };
   });
 }
 
 export async function deleteNews(id: string) {
   return run(async (email) => {
-    const rows = await db()<{ image_path: string | null; body_html: string }[]>`
-      delete from undercover.news where id = ${z.string().uuid().parse(id)} returning image_path, body_html`;
+    const rows = await db()<{ image_path: string | null; body_html: string; body_html_en: string }[]>`
+      delete from undercover.news where id = ${z.string().uuid().parse(id)} returning image_path, body_html, body_html_en`;
     await removeMedia(rows[0]?.image_path);
-    for (const p of bodyMediaPaths(rows[0]?.body_html ?? "")) await removeMedia(p);
+    for (const p of new Set(bodyMediaPaths((rows[0]?.body_html ?? "") + (rows[0]?.body_html_en ?? "")))) await removeMedia(p);
     await touch("news", email);
     updateTag(CONTENT_TAG);
   });

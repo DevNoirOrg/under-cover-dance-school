@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ClassItem, Room } from "@/lib/content-types";
+import { t, type Locale } from "@/lib/i18n";
 
 /*
   A kiválasztott órák közös állapota: az órarend, az összegző sáv, a
@@ -61,7 +62,7 @@ export function useSelection() {
 }
 
 /** Kiválasztott óra chipje, "x" gombbal. */
-export function SelectionChip({ item, light }: { item: SelectedClass; light?: boolean }) {
+export function SelectionChip({ item, light, locale }: { item: SelectedClass; light?: boolean; locale: Locale }) {
   const { setChecked } = useSelection();
   return (
     <span className={light ? "sel-chip on-light" : "sel-chip"} title={item.full}>
@@ -69,7 +70,7 @@ export function SelectionChip({ item, light }: { item: SelectedClass; light?: bo
       <button
         type="button"
         className="chip-x"
-        aria-label={item.chip.replace(/·/g, "-") + " eltávolítása"}
+        aria-label={t(locale).chip.remove(item.chip.replace(/·/g, "-"))}
         onClick={(e) => {
           e.preventDefault();
           setChecked(item.id, false);

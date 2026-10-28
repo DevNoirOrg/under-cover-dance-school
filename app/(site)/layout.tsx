@@ -1,25 +1,12 @@
 import type { Metadata } from "next";
 import { siteUrl } from "@/lib/site-url";
+import { baseMetadata } from "@/lib/seo";
 import { fontVariables } from "../fonts";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  metadataBase: siteUrl,
-  title: "Under Cover — K-pop Dance Academy",
-  description: "Fedezd fel a K-Pop világát Magyarország legdinamikusabb táncakadémiáján.",
-  openGraph: {
-    title: "Under Cover — K-pop Dance Academy",
-    description: "Fedezd fel a K-Pop világát Magyarország legdinamikusabb táncakadémiáján.",
-    locale: "hu_HU",
-    type: "website",
-    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "Under Cover" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    images: ["/opengraph-image.png"],
-  },
-};
+export const metadata: Metadata = { metadataBase: siteUrl, ...baseMetadata("hu") };
 
+/* A magyar főoldal gyökér-layoutja (az angol: app/(site-en)). */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="hu" className={`scroll-smooth ${fontVariables}`}>

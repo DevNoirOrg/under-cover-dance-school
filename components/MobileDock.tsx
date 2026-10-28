@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { t, type Locale } from "@/lib/i18n";
 import { useSelection } from "./selection";
 
 /*
   MOBIL KIVÁLASZTÁS-SÁV — csak telefonon, csak ha van kiválasztott óra,
   és csak amíg sem az összegző sáv, sem a jelentkezés nem látszik.
 */
-export default function MobileDock() {
+export default function MobileDock({ locale }: { locale: Locale }) {
+  const d = t(locale);
   const { selected } = useSelection();
   const [blockersInView, setBlockersInView] = useState(0);
 
@@ -40,12 +42,12 @@ export default function MobileDock() {
       className={`font-title md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-3${visible ? " dock-visible" : ""}`}
     >
       <div className="rounded-[24px] bg-ink/95 backdrop-blur px-5 py-4 flex items-center gap-4 shadow-2xl">
-        <span className="text-white font-bold text-sm">{n} óra kiválasztva</span>
+        <span className="text-white font-bold text-sm">{d.schedule.selected(n)}</span>
         <a
           href="#jelentkezes"
           className="ml-auto shrink-0 bg-uc text-ink px-5 py-3 rounded-xl text-[10px] font-extrabold uppercase tracking-widest"
         >
-          Jelentkezem
+          {d.dock.signup}
         </a>
       </div>
     </div>

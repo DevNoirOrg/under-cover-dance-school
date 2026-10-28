@@ -23,20 +23,44 @@ export async function readSettings(): Promise<SettingsMap> {
 
 export async function readRooms(): Promise<Room[]> {
   const rooms = await db()<
-    { id: string; slug: string; name: string; short_name: string; column_headings: string[]; min_height_px: number }[]
-  >`select id, slug, name, short_name, column_headings, min_height_px
+    {
+      id: string;
+      slug: string;
+      name: string;
+      short_name: string;
+      column_headings: string[];
+      min_height_px: number;
+      name_en: string;
+      short_name_en: string;
+      column_headings_en: string[];
+    }[]
+  >`select id, slug, name, short_name, column_headings, min_height_px, name_en, short_name_en, column_headings_en
     from undercover.rooms order by sort, name`;
   const classes = await db()<
-    { id: string; room_id: string; col: number; title: string; subtitle: string; chip: string }[]
-  >`select id, room_id, col, title, subtitle, chip from undercover.classes order by col, sort`;
+    {
+      id: string;
+      room_id: string;
+      col: number;
+      title: string;
+      subtitle: string;
+      chip: string;
+      title_en: string;
+      subtitle_en: string;
+      chip_en: string;
+    }[]
+  >`select id, room_id, col, title, subtitle, chip, title_en, subtitle_en, chip_en
+    from undercover.classes order by col, sort`;
   return rooms.map((r) => ({
     id: r.id,
     slug: r.slug,
     name: r.name,
     shortName: r.short_name,
+    nameEn: r.name_en,
+    shortNameEn: r.short_name_en,
     minHeightPx: r.min_height_px,
     columns: r.column_headings.map((heading, col) => ({
       heading,
+      headingEn: r.column_headings_en[col] ?? "",
       classes: classes
         .filter((c) => c.room_id === r.id && c.col === col)
         .map((c) => ({
@@ -44,6 +68,9 @@ export async function readRooms(): Promise<Room[]> {
           title: c.title,
           subtitle: c.subtitle,
           chip: c.chip,
+          titleEn: c.title_en,
+          subtitleEn: c.subtitle_en,
+          chipEn: c.chip_en,
           full: classFullLabel(r.name, heading, c.title, c.subtitle),
         })),
     })),
@@ -62,8 +89,14 @@ export async function readNews(): Promise<NewsItem[]> {
       image_alt: string | null;
       placeholder_label: string;
       body_html: string;
+      title_en: string;
+      excerpt_en: string;
+      body_html_en: string;
+      image_alt_en: string;
+      placeholder_label_en: string;
     }[]
-  >`select id, slug, published_on, title, excerpt, image_path, image_alt, placeholder_label, body_html
+  >`select id, slug, published_on, title, excerpt, image_path, image_alt, placeholder_label, body_html,
+      title_en, excerpt_en, body_html_en, image_alt_en, placeholder_label_en
     from undercover.news order by published_on desc, created_at desc`;
   return rows.map((r) => ({
     id: r.id,
@@ -76,12 +109,19 @@ export async function readNews(): Promise<NewsItem[]> {
     imageAlt: r.image_alt,
     placeholderLabel: r.placeholder_label,
     bodyHtml: r.body_html,
+    titleEn: r.title_en,
+    excerptEn: r.excerpt_en,
+    bodyHtmlEn: r.body_html_en,
+    imageAltEn: r.image_alt_en,
+    placeholderLabelEn: r.placeholder_label_en,
   }));
 }
 
 export async function readPrices(): Promise<PriceItem[]> {
-  const rows = await db()<PriceItem[]>`select id, name, price, note from undercover.prices order by sort, name`;
-  return rows.map((r) => ({ id: r.id, name: r.name, price: r.price, note: r.note }));
+  const rows = await db()<
+    { id: string; name: string; price: string; note: PriceItem["note"]; name_en: string; price_en: string }[]
+  >`select id, name, price, note, name_en, price_en from undercover.prices order by sort, name`;
+  return rows.map((r) => ({ id: r.id, name: r.name, price: r.price, note: r.note, nameEn: r.name_en, priceEn: r.price_en }));
 }
 
 export type SiteContent = {
@@ -105,10 +145,10 @@ export async function getSiteContent(): Promise<SiteContent> {
  * frissen létrehozott hír oldala már az első megnyitáskor is friss adatból
  * készül, nem a build közben eltett teljes listából.)
  */
-export async function getNewsPage(slug: string): Promise<{ item: NewsItem | null; copyright: string }> {
+export async function getNewsPage(slug: string): Promise<{ item: NewsItem | null; footer: SettingsMap["footer"] }> {
   "use cache";
   cacheLife("max");
   cacheTag(CONTENT_TAG);
   const [news, settings] = await Promise.all([readNews(), readSettings()]);
-  return { item: news.find((n) => n.slug === slug) ?? null, copyright: settings.footer.copyright };
+  return { item: news.find((n) => n.slug === slug) ?? null, footer: settings.footer };
 }

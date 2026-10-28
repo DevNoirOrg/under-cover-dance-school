@@ -1,5 +1,7 @@
 import type { HeroContent } from "@/lib/content-types";
 import { mediaUrl } from "@/lib/format";
+import { t, type Locale } from "@/lib/i18n";
+import LanguageSwitch from "./LanguageSwitch";
 import LogoMark from "./LogoMark";
 
 /** A bevezető szöveg; a kiemelt rész (ha van) fehérrel. Az üres részek kimaradnak. */
@@ -22,7 +24,7 @@ export function HeroLead({ hero }: { hero: Pick<HeroContent, "leadBefore" | "lea
 }
 
 /* HERO — bal oldalt logó + szöveg + gombok, jobb oldalt álló (9:16) videó. */
-export default function Hero({ hero }: { hero: HeroContent }) {
+export default function Hero({ hero, locale, alternateHref }: { hero: HeroContent; locale: Locale; alternateHref: string }) {
   return (
     <header
       id="home"
@@ -30,6 +32,16 @@ export default function Hero({ hero }: { hero: HeroContent }) {
     >
       {/* Az egyetlen logó-példány; görgetéskor a fejlécbe úszik. */}
       <LogoMark />
+
+      {/* Nyelvválasztó a lap tetején (a lebegő menü itt még rejtve van) — telefonon is. */}
+      <div className="absolute right-5 top-6 z-20 md:right-10 md:top-8">
+        <LanguageSwitch
+          locale={locale}
+          alternateHref={alternateHref}
+          variant="dark"
+          className="rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur"
+        />
+      </div>
 
       {/* Világos fény-átmenet a jobb alsó sarokból. */}
       <div className="absolute inset-0 z-[1] bg-gradient-to-tl from-uc-pale/55 via-uc-pale/14 to-transparent pointer-events-none"></div>
@@ -84,7 +96,7 @@ export default function Hero({ hero }: { hero: HeroContent }) {
             </div>
           ) : (
             <div className="relative w-[min(72vw,300px)] sm:w-[min(60vw,330px)] lg:w-[min(32vw,360px)] aspect-[9/16] rounded-[2rem] overflow-hidden bg-ink/40 border border-dashed border-white/25 grid place-items-center">
-              <span className="text-white/50 text-xs font-bold tracking-[0.3em] uppercase">Álló videó</span>
+              <span className="text-white/50 text-xs font-bold tracking-[0.3em] uppercase">{t(locale).hero.videoPlaceholder}</span>
             </div>
           )}
         </div>

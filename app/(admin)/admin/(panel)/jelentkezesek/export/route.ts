@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const apps = await listApplications(status);
 
   const cell = (v: string | null | undefined) => `"${(v ?? "").replace(/"/g, '""')}"`;
-  const header = ["Beküldve", "Státusz", "Név", "E-mail", "Telefon", "Születési dátum", "Szülő neve", "Szülő e-mail", "Tánctapasztalat", "Kezdés", "Órák", "Megjegyzés", "Belső megjegyzés"];
+  const header = ["Beküldve", "Státusz", "Név", "E-mail", "Telefon", "Születési dátum", "Szülő neve", "Szülő e-mail", "Tánctapasztalat", "Kezdés", "Órák", "Megjegyzés", "Belső megjegyzés", "Nyelv"];
   const lines = apps.map((a) =>
     [
       new Date(a.createdAt).toLocaleString("hu-HU"),
@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       a.classes.join(" | "),
       a.megjegyzes,
       a.adminNote,
+      a.lang === "en" ? "angol" : "magyar",
     ]
       .map(cell)
       .join(";"),

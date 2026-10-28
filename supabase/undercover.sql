@@ -59,6 +59,10 @@ create table if not exists undercover.rooms (
   column_headings text[] not null check (array_length(column_headings, 1) between 1 and 3),
   min_height_px   integer not null default 220,
   sort            integer not null default 0,
+  -- angol változat (üres = az angol oldalon a magyar látszik)
+  name_en            text not null default '',
+  short_name_en      text not null default '',
+  column_headings_en text[] not null default '{}',
   updated_at      timestamptz not null default now(),
   updated_by      text
 );
@@ -70,7 +74,10 @@ create table if not exists undercover.classes (
   sort     integer not null default 0,
   title    text not null,
   subtitle text not null default '',
-  chip     text not null
+  chip     text not null,
+  title_en    text not null default '',
+  subtitle_en text not null default '',
+  chip_en     text not null default ''
 );
 create index if not exists classes_room_idx on undercover.classes (room_id, col, sort);
 
@@ -87,6 +94,12 @@ create table if not exists undercover.news (
   image_path        text,
   image_alt         text,
   placeholder_label text not null default '',
+  -- angol változat: a hír csak akkor jelenik meg az angol oldalon, ha van angol címe és szövege
+  title_en             text not null default '',
+  excerpt_en           text not null default '',
+  body_html_en         text not null default '',
+  image_alt_en         text not null default '',
+  placeholder_label_en text not null default '',
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
   updated_by        text
@@ -100,7 +113,9 @@ create table if not exists undercover.prices (
   name  text not null,
   price text not null,
   note  text not null default '' check (note in ('', '*', '**')),
-  sort  integer not null default 0
+  sort  integer not null default 0,
+  name_en  text not null default '',
+  price_en text not null default ''
 );
 
 -- ---------------------------------------------------------------------
@@ -126,7 +141,9 @@ create table if not exists undercover.applications (
   ip_hash           text,
   admin_note        text not null default '',
   status_updated_at timestamptz,
-  status_updated_by text
+  status_updated_by text,
+  -- milyen nyelvű oldalon jelentkezett
+  lang              text not null default 'hu' check (lang in ('hu', 'en'))
 );
 create index if not exists applications_created_idx on undercover.applications (created_at desc);
 create index if not exists applications_ip_idx on undercover.applications (ip_hash, created_at);

@@ -2,7 +2,21 @@
 
 import { useState } from "react";
 import { saveFooter } from "@/app/actions/admin";
-import { Button, Card, Field, IconButton, PageHeader, SaveBar, inputCls, isSame, useSaver } from "@/components/admin/ui";
+import {
+  Button,
+  Card,
+  Field,
+  IconButton,
+  LangTabs,
+  PageHeader,
+  SaveBar,
+  TrText,
+  countMissing,
+  inputCls,
+  isSame,
+  useSaver,
+  type EditLang,
+} from "@/components/admin/ui";
 import type { EditInfo } from "@/lib/admin-data";
 import type { FooterContent } from "@/lib/content-types";
 
@@ -10,14 +24,32 @@ export default function FooterEditor({ initial, info }: { initial: FooterContent
   const [saved, setSaved] = useState(initial);
   const [v, setV] = useState(initial);
   const { pending, status, save } = useSaver();
+  const [lang, setLang] = useState<EditLang>("hu");
   const set = <K extends keyof FooterContent>(k: K, val: FooterContent[K]) => setV((p) => ({ ...p, [k]: val }));
+  const setLoc = (i: number, patch: Partial<FooterContent["locations"][number]>) =>
+    set("locations", v.locations.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const isEn = lang === "en";
+  const missing = countMissing([
+    ...v.locations.flatMap((l) => [[l.text, l.en?.text], [l.note, l.en?.note]] as [string, string | undefined][]),
+    [v.copyright, v.en?.copyright],
+    [v.tagline, v.en?.tagline],
+  ]);
 
   return (
     <div>
-      <PageHeader title="Lábléc" description="Elérhetőségek, közösségi linkek és az alsó sor szövegei." />
+      <PageHeader title="Lábléc" description="Elérhetőségek, közösségi linkek és az alsó sor szövegei.">
+        <LangTabs lang={lang} onChange={setLang} missing={missing} />
+      </PageHeader>
       <div className="space-y-6">
-        <Card title="Elérhetőségek" description="Az e-mail cím és a telefonszám kattintható lesz. Ha valamelyik üres, nem jelenik meg.">
-          <div className="grid gap-5 md:grid-cols-2">
+        <Card
+          title="Elérhetőségek"
+          description={
+            isEn
+              ? "Angolul csak a helyszínek szövege fordítható; az e-mail cím és a telefonszám mindkét nyelven ugyanaz."
+              : "Az e-mail cím és a telefonszám kattintható lesz. Ha valamelyik üres, nem jelenik meg."
+          }
+        >
+          <div className="grid gap-5 md:grid-cols-2" hidden={isEn}>
             <Field label="E-mail" htmlFor="em">
               <input id="em" type="email" className={inputCls} value={v.email} placeholder="info@kpoptanciskola.com" onChange={(e) => set("email", e.target.value)} />
             </Field>
@@ -30,34 +62,40 @@ export default function FooterEditor({ initial, info }: { initial: FooterContent
             {v.locations.map((l, i) => (
               <div key={i} className="flex items-start gap-2">
                 <div className="grid flex-1 gap-2 md:grid-cols-2">
-                  <input
-                    aria-label="Helyszín"
-                    className={inputCls}
-                    value={l.text}
+                  <TrText
+                    ariaLabel="Helyszín"
+                    lang={lang}
+                    hu={l.text}
+                    en={l.en?.text}
                     placeholder="MD Dance Studio – Opera: 6. kerület, Hajós utca 1."
-                    onChange={(e) => set("locations", v.locations.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
+                    onHu={(x) => setLoc(i, { text: x })}
+                    onEn={(x) => setLoc(i, { en: { ...l.en, text: x } })}
                   />
-                  <input
-                    aria-label="Megjegyzés a helyszínhez"
-                    className={inputCls}
-                    value={l.note}
+                  <TrText
+                    ariaLabel="Megjegyzés a helyszínhez"
+                    lang={lang}
+                    hu={l.note}
+                    en={l.en?.note}
                     placeholder="pl. Opera metrómegállótól 2 percre (nem kötelező)"
-                    onChange={(e) => set("locations", v.locations.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
+                    onHu={(x) => setLoc(i, { note: x })}
+                    onEn={(x) => setLoc(i, { en: { ...l.en, note: x } })}
                   />
                 </div>
-                <IconButton label="Törlés" onClick={() => set("locations", v.locations.filter((_, j) => j !== i))}>
-                  ✕
-                </IconButton>
+                {!isEn && (
+                  <IconButton label="Törlés" onClick={() => set("locations", v.locations.filter((_, j) => j !== i))}>
+                    ✕
+                  </IconButton>
+                )}
               </div>
             ))}
-            {v.locations.length < 6 && (
+            {v.locations.length < 6 && !isEn && (
               <Button variant="ghost" onClick={() => set("locations", [...v.locations, { text: "", note: "" }])}>
                 + Új helyszín
               </Button>
             )}
           </div>
         </Card>
-        <Card title="Kövess minket" description="Ha a link üres, a felirat nem kattintható.">
+        <Card title="Kövess minket" description="Ha a link üres, a felirat nem kattintható." className={isEn ? "hidden" : ""}>
           <div className="space-y-2">
             {v.socials.map((s, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -90,10 +128,24 @@ export default function FooterEditor({ initial, info }: { initial: FooterContent
         <Card title="Alsó sor">
           <div className="grid gap-5 md:grid-cols-2">
             <Field label="Copyright" htmlFor="cp">
-              <input id="cp" className={inputCls} value={v.copyright} onChange={(e) => set("copyright", e.target.value)} />
+              <TrText
+                id="cp"
+                lang={lang}
+                hu={v.copyright}
+                en={v.en?.copyright}
+                onHu={(x) => set("copyright", x)}
+                onEn={(x) => set("en", { ...v.en, copyright: x })}
+              />
             </Field>
             <Field label="Szlogen" htmlFor="tg">
-              <input id="tg" className={inputCls} value={v.tagline} onChange={(e) => set("tagline", e.target.value)} />
+              <TrText
+                id="tg"
+                lang={lang}
+                hu={v.tagline}
+                en={v.en?.tagline}
+                onHu={(x) => set("tagline", x)}
+                onEn={(x) => set("en", { ...v.en, tagline: x })}
+              />
             </Field>
           </div>
         </Card>

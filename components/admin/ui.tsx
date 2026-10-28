@@ -281,3 +281,106 @@ export function StringListEditor({
 export function isSame(a: unknown, b: unknown) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
+
+// ---------------------------------------------------------------------
+//  KÉTNYELVŰ SZERKESZTÉS — „Magyar | English” kapcsoló és fordítható mezők.
+//  Az angol fülön a magyar szöveg a mezőben halványan (placeholder) látszik;
+//  a még le nem fordított mező sárga keretet kap. Üres angol mező esetén az
+//  angol oldalon a magyar szöveg jelenik meg.
+// ---------------------------------------------------------------------
+export type EditLang = "hu" | "en";
+
+/** Hány mezőnek van magyar szövege, de még nincs angol fordítása. */
+export function countMissing(pairs: [string | null | undefined, string | null | undefined][]): number {
+  return pairs.filter(([hu, en]) => !!hu?.trim() && !en?.trim()).length;
+}
+
+export const missingCls = " !border-amber-300 !bg-amber-50/50";
+
+export function LangTabs({ lang, onChange, missing = 0 }: { lang: EditLang; onChange: (l: EditLang) => void; missing?: number }) {
+  return (
+    <div className="flex flex-col items-start gap-1.5 sm:items-end">
+      <div className="inline-flex gap-1 rounded-full bg-white p-1 shadow-[0_6px_18px_-12px_rgba(20,19,22,0.5)]">
+        {(
+          [
+            ["hu", "Magyar"],
+            ["en", "English"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={lang === id}
+            onClick={() => onChange(id)}
+            className={`rounded-full px-4 py-2 text-xs font-extrabold uppercase tracking-widest transition-colors ${
+              lang === id ? "bg-ink text-white" : "text-slate-500 hover:text-ink"
+            }`}
+          >
+            {label}
+            {id === "en" && missing > 0 && (
+              <span className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800" title="Még nincs lefordítva">
+                {missing}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      {lang === "en" && (
+        <p className="max-w-xs text-xs text-slate-400 sm:text-right">
+          Angol szövegek. Ami üres (sárga), ott az angol oldalon a magyar szöveg látszik.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Fordítható szövegmező: magyar fülön a magyar, angol fülön az angol értéket
+ * szerkeszti (a magyar szöveg halványan látszik benne, hosszabbnál alatta is).
+ */
+export function TrText({
+  lang,
+  hu,
+  en,
+  onHu,
+  onEn,
+  id,
+  rows,
+  className = "",
+  placeholder,
+  ariaLabel,
+}: {
+  lang: EditLang;
+  hu: string;
+  en: string | undefined;
+  onHu: (v: string) => void;
+  onEn: (v: string) => void;
+  id?: string;
+  /** Ha meg van adva, többsoros mező. */
+  rows?: number;
+  className?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+}) {
+  const isEn = lang === "en";
+  const value = isEn ? (en ?? "") : hu;
+  const missing = isEn && !!hu.trim() && !(en ?? "").trim();
+  const cls = `${rows ? textareaCls : inputCls} ${className}${missing ? missingCls : ""}`;
+  const ph = isEn ? hu || placeholder : placeholder;
+  const onChange = (v: string) => (isEn ? onEn(v) : onHu(v));
+  return (
+    <>
+      {rows ? (
+        <textarea id={id} aria-label={ariaLabel} rows={rows} className={cls} value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input id={id} aria-label={ariaLabel} className={cls} value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      )}
+      {isEn && rows && hu.trim() && (
+        <details className="text-xs text-slate-400">
+          <summary className="cursor-pointer font-bold">Magyar szöveg</summary>
+          <p className="mt-1 whitespace-pre-line">{hu}</p>
+        </details>
+      )}
+    </>
+  );
+}

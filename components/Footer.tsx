@@ -1,9 +1,12 @@
 /* eslint-disable @next/next/no-img-element -- a fehér logó a design szerinti egyszerű <img> */
 import Link from "next/link";
 import type { FooterContent } from "@/lib/content-types";
+import { paths, t, type Locale } from "@/lib/i18n";
+import LanguageSwitch from "./LanguageSwitch";
 
 /* LÁBLÉC / elérhetőségek — itt az EREDETI, fehér Under Cover logó van. */
-export default function Footer({ footer }: { footer: FooterContent }) {
+export default function Footer({ footer, locale, alternateHref }: { footer: FooterContent; locale: Locale; alternateHref: string }) {
+  const d = t(locale).footer;
   return (
     <footer className="relative -mt-12 md:-mt-16 pt-28 pb-16 md:pt-36 md:pb-20 px-6 bg-ink text-white rounded-t-[3rem] md:rounded-t-[4rem]">
       <div className="max-w-6xl mx-auto">
@@ -16,11 +19,11 @@ export default function Footer({ footer }: { footer: FooterContent }) {
           />
           <div className="grid sm:grid-cols-[minmax(0,22rem)_auto] gap-12 sm:gap-16">
             <div className="space-y-4">
-              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">Elérhetőségek</h4>
+              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">{d.contact}</h4>
               <ul className="text-sm font-medium text-slate-400 space-y-2">
                 {footer.email && (
                   <li>
-                    E-mail:{" "}
+                    {d.email}{" "}
                     <a href={`mailto:${footer.email}`} className="hover:text-uc transition-colors break-all">
                       {footer.email}
                     </a>
@@ -28,7 +31,7 @@ export default function Footer({ footer }: { footer: FooterContent }) {
                 )}
                 {footer.phone && (
                   <li>
-                    Tel.:{" "}
+                    {d.phone}{" "}
                     <a href={`tel:${footer.phone.replace(/[^\d+]/g, "")}`} className="hover:text-uc transition-colors whitespace-nowrap">
                       {footer.phone}
                     </a>
@@ -43,7 +46,7 @@ export default function Footer({ footer }: { footer: FooterContent }) {
               </ul>
             </div>
             <div className="space-y-4">
-              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">Kövess Minket</h4>
+              <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-uc">{d.follow}</h4>
               <div className="flex gap-4">
                 {footer.socials.map((s, i) =>
                   s.href ? (
@@ -68,9 +71,10 @@ export default function Footer({ footer }: { footer: FooterContent }) {
         </div>
         <div className="pt-12 flex flex-col md:flex-row justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest gap-4">
           <p>{footer.copyright}</p>
-          <Link href="/adatkezeles" className="hover:text-uc transition-colors">
-            Adatkezelési tájékoztató
+          <Link href={paths[locale].privacy} className="hover:text-uc transition-colors">
+            {d.privacy}
           </Link>
+          <LanguageSwitch locale={locale} alternateHref={alternateHref} variant="dark" />
           <p>{footer.tagline}</p>
         </div>
       </div>

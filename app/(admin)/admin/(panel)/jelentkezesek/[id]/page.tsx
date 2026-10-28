@@ -35,12 +35,18 @@ async function ApplicationPageContent({ params }: { params: Promise<{ id: string
       <div className="mt-4 mb-6 flex flex-wrap items-center gap-3">
         <h1 className="font-title text-3xl font-black">{a.nev}</h1>
         <span className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest ${status?.badge}`}>{status?.label}</span>
+        {a.lang === "en" && (
+          <span className="rounded-full bg-sky-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-800">Angol</span>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="self-start">
           <dl className="divide-y divide-slate-100">
             <Row k="Beküldve">{created}</Row>
+            <Row k="Nyelv">
+              {a.lang === "en" ? "Angol — az angol oldalon jelentkezett, angolul válaszolj neki" : "Magyar"}
+            </Row>
             <Row k="E-mail">
               <a className="text-uc-deep underline" href={`mailto:${a.email}`}>
                 {a.email}

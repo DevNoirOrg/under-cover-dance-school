@@ -31,6 +31,8 @@ export type Application = {
   adminNote: string;
   statusUpdatedAt: string | null;
   statusUpdatedBy: string | null;
+  /** Milyen nyelvű oldalon jelentkezett. */
+  lang: "hu" | "en";
 };
 
 type Row = {
@@ -52,6 +54,7 @@ type Row = {
   admin_note: string;
   status_updated_at: Date | null;
   status_updated_by: string | null;
+  lang?: "hu" | "en";
 };
 
 const map = (r: Row): Application => ({
@@ -73,6 +76,7 @@ const map = (r: Row): Application => ({
   adminNote: r.admin_note,
   statusUpdatedAt: r.status_updated_at?.toISOString() ?? null,
   statusUpdatedBy: r.status_updated_by,
+  lang: r.lang === "en" ? "en" : "hu",
 });
 
 export async function listApplications(status: StatusId | "osszes"): Promise<Application[]> {
