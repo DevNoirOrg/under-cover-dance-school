@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# security audit register (public repo: never commit)
+.security-audit/
+cpanel.original

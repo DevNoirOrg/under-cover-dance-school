@@ -1,4 +1,4 @@
-# Under Cover — K-pop Dance Academy
+# Under Cover — K-pop Dance School
 
 Next.js (App Router) + TypeScript + Tailwind CSS v4 weboldal admin felülettel.
 A publikus oldal kinézete 1:1 a `md designs/under_cover_18` design alapján készült;

@@ -71,7 +71,7 @@ export function renderEmail(opts: {
   const html = `<!doctype html><html><body style="margin:0;background:#f5f4f7;font-family:Helvetica,Arial,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:32px 16px">
 <div style="background:#ffffff;border-radius:24px;padding:32px">
-<p style="margin:0 0 4px;color:#9147a1;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">Under Cover Dance Academy</p>
+<p style="margin:0 0 4px;color:#9147a1;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">Under Cover Dance School</p>
 <h1 style="margin:0 0 16px;color:#141316;font-size:22px">${escapeHtml(opts.title)}</h1>
 ${opts.intro ? `<p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.6">${escapeHtml(opts.intro)}</p>` : ""}
 <table style="border-collapse:collapse;width:100%">${rowsHtml}</table>
