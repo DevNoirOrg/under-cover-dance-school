@@ -11,12 +11,12 @@ import { Button } from "./ui";
   Kép / videó feltöltése közvetlenül a Supabase Storage-ba.
    - Kép: a böngésző feltöltés előtt WebP-re alakítja és lekicsinyíti
      (max. 1600 px), így a nagy telefonos fotók sem lassítják az oldalt.
-   - Videó: MP4, legfeljebb 50 MB.
+   - Videó: MP4, legfeljebb 5 MB.
   A mező értéke a fájl útvonala; mentéskor kerül az adatbázisba.
 */
 
 const MAX_IMAGE_SIDE = 1600;
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_INPUT_BYTES = 25 * 1024 * 1024;
 
 async function toWebp(file: File): Promise<Blob> {
@@ -37,7 +37,7 @@ async function toWebp(file: File): Promise<Blob> {
 }
 
 /**
- * Fájl feltöltése a Storage-ba (kép → WebP, max. 1600 px; videó → MP4, max. 50 MB).
+ * Fájl feltöltése a Storage-ba (kép → WebP, max. 1600 px; videó → MP4, max. 5 MB; a fájlnév egyedi, ezért a böngésző 1 évig gyorsítótárazhatja).
  * Visszaadja a fájl útvonalát (pl. "images/2026/….webp"). Hiba esetén kivételt dob.
  */
 export async function uploadMedia(kind: "image" | "video", file: File): Promise<string> {
@@ -50,7 +50,7 @@ export async function uploadMedia(kind: "image" | "video", file: File): Promise<
     contentType = "image/webp";
   } else {
     if (file.type !== "video/mp4") throw new Error("Csak MP4 videó tölthető fel.");
-    if (file.size > MAX_VIDEO_BYTES) throw new Error("A videó túl nagy (max. 50 MB). Tömörítsd, vagy vágd rövidebbre.");
+    if (file.size > MAX_VIDEO_BYTES) throw new Error("A videó túl nagy (max. 5 MB). Tömörítsd 720p-re hang nélkül (pl. HandBrake), egy háttérvideóhoz 2–5 MB elég.");
     blob = file;
     contentType = "video/mp4";
   }
@@ -58,7 +58,7 @@ export async function uploadMedia(kind: "image" | "video", file: File): Promise<
   if (!target.ok) throw new Error(target.error);
   const { error: upErr } = await supabaseBrowser()
     .storage.from("undercover")
-    .uploadToSignedUrl(target.path, target.token, blob, { contentType });
+    .uploadToSignedUrl(target.path, target.token, blob, { contentType, cacheControl: "31536000" });
   if (upErr) throw new Error("A feltöltés nem sikerült: " + upErr.message);
   return target.path;
 }
@@ -140,7 +140,7 @@ export default function MediaField({
       <p className="text-xs text-slate-400">
         {kind === "image"
           ? "Bármilyen kép jó: feltöltéskor automatikusan WebP-re alakul és max. 1600 px-re kicsinyül."
-          : "MP4, legfeljebb 50 MB. Álló (9:16) videó a legszebb."}
+          : "MP4, legfeljebb 5 MB. Álló (9:16) videó a legszebb."}
       </p>
       {error && <p className="text-sm font-bold text-red-600">{error}</p>}
     </div>

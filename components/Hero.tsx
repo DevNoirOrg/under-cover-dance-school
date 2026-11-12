@@ -3,6 +3,7 @@ import { mediaUrl } from "@/lib/format";
 import { t, type Locale } from "@/lib/i18n";
 import LanguageSwitch from "./LanguageSwitch";
 import LogoMark from "./LogoMark";
+import LazyVideo from "./LazyVideo";
 
 /** A bevezető szöveg; a kiemelt rész (ha van) fehérrel. Az üres részek kimaradnak. */
 export function HeroLead({ hero }: { hero: Pick<HeroContent, "leadBefore" | "leadHighlight" | "leadAfter"> }) {
@@ -84,14 +85,10 @@ export default function Hero({ hero, locale, alternateHref }: { hero: HeroConten
         <div className="justify-self-center lg:justify-self-end">
           {hero.videoPath ? (
             <div className="relative w-[min(72vw,300px)] sm:w-[min(60vw,330px)] lg:w-[min(32vw,360px)] aspect-[9/16] rounded-[2rem] overflow-hidden bg-ink/40">
-              <video
+              <LazyVideo
                 className="absolute inset-0 w-full h-full object-cover"
                 src={mediaUrl(hero.videoPath)}
                 poster={hero.videoPosterPath ? mediaUrl(hero.videoPosterPath) : undefined}
-                autoPlay
-                muted
-                loop
-                playsInline
               />
             </div>
           ) : (

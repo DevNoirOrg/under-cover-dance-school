@@ -17,6 +17,7 @@ export function classFullLabel(roomName: string, columnHeading: string, title: s
 
 /** Kép/videó címe: "/..." = a public mappából, egyébként a Supabase Storage-ból. */
 export function mediaUrl(path: string): string {
+  if (!path?.trim()) return ""; // üres mező: ne kérjen le semmit (különben a bucket gyökerét kérné → 400)
   if (path.startsWith("/") || path.startsWith("http")) return path;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   return `${base}/storage/v1/object/public/undercover/${path}`;
